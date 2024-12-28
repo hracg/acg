@@ -3,73 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Cube Animation</title>
+    <title>3D Rotating Text and Image</title>
     <style>
-        /* Set up basic page styles */
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
+        body {
             display: flex;
+            flex-direction: column; /* Stack elements vertically */
             justify-content: center;
             align-items: center;
-            background-color: #f0f0f0;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif; /* Set a default font */
+            background-image: url('avinash.jpg'); /* Set the background image */
+            background-size: cover; /* Cover the entire viewport */
+            background-position: center; /* Center the background image */
+            background-repeat: no-repeat; /* Prevent the background from repeating */
         }
 
-        /* Container for the cube */
-        .scene {
-            width: 200px;
-            height: 200px;
-            perspective: 800px; /* Gives depth to the scene */
-        }
-
-        /* Cube itself */
-        .cube {
-            width: 100%;
-            height: 100%;
+        .container {
             position: relative;
-            transform-style: preserve-3d;
-            animation: rotateCube 5s infinite linear;
+            width: 80vw; /* Use viewport width for responsiveness */
+            height: 80vw; /* Maintain aspect ratio */
+            max-width: 300px; /* Maximum width */
+            max-height: 300px; /* Maximum height */
+            animation: rotate 5s infinite linear;
+            margin-bottom: 20px; /* Space between the image and the button */
+            backdrop-filter: blur(5px); /* Optional: blur the background behind the container */
         }
 
-        /* Faces of the cube */
-        .face {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(255, 255, 255, 0.9);
-            border: 2px solid #ccc;
-            box-sizing: border-box;
-        }
-
-        .front  { transform: translateZ(100px); background-color: #f00; }
-        .back   { transform: rotateY(180deg) translateZ(100px); background-color: #0f0; }
-        .left   { transform: rotateY(-90deg) translateZ(100px); background-color: #00f; }
-        .right  { transform: rotateY(90deg) translateZ(100px); background-color: #ff0; }
-        .top    { transform: rotateX(90deg) translateZ(100px); background-color: #0ff; }
-        .bottom { transform: rotateX(-90deg) translateZ(100px); background-color: #f0f; }
-
-        /* Animation to rotate the cube */
-        @keyframes rotateCube {
+        @keyframes rotate {
             0% {
-                transform: rotateX(0) rotateY(0);
+                transform: rotateY(0deg);
             }
             100% {
-                transform: rotateX(360deg) rotateY(360deg);
+                transform: rotateY(360deg);
+            }
+        }
+
+        .text {
+            position: absolute;
+            top: 5%; /* Positioning the text at the very top of the image */
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5vw; /* Responsive font size */
+            font-weight: bold;
+            color: transparent; /* Make the text transparent for the glow effect */
+            background: linear-gradient(45deg, #ff0080, #00bfff, #ff0080);
+            -webkit-background-clip: text;
+            background-clip: text;
+            filter: blur(2px); /* Add blur for a glowing effect */
+            animation: textGlow 1.5s infinite alternate;
+        }
+
+        @keyframes textGlow {
+            0% {
+                filter: blur(2px);
+            }
+            100% {
+                filter: blur(5px);
+            }
+        }
+
+        .image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        .go-button {
+            padding: 10px 20px;
+            font-size: 2vw; /* Responsive font size */
+            color: white;
+            background-color: #007bff; /* Button color */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px; /* Space above the button */
+        }
+
+        .go-button:hover {
+            background-color: #0056b3; /* Darker shade on hover */
+        }
+
+        /* Media Queries for additional responsiveness */
+        @media (max-width: 600px) {
+            .text {
+                font-size: 8vw; /* Larger text for smaller screens */
+            }
+
+            .go-button {
+                font-size: 4vw; /* Larger button text for smaller screens */
+            }
+        }
+
+        @media (max-width: 400px) {
+            .text {
+                font-size: 10vw; /* Even larger text for very small screens */
+            }
+
+            .go-button {
+                font-size: 5vw; /* Even larger button text for very small screens */
             }
         }
     </style>
 </head>
 <body>
-    <div class="scene">
-        <div class="cube">
-            <div class="face front"></div>
-            <div class="face back"></div>
-            <div class="face left"></div>
-            <div class="face right"></div>
-            <div class="face top"></div>
-            <div class="face bottom"></div>
-        </div>
+    <div class="container">
+        <img src="bm.jpg" alt="Image" class="image">
+        <div class="text">ACG</div>
     </div>
+    <button class="go-button" onclick="goToGame()">Go</button>
+
+    <script>
+        function goToGame() {
+            window.location.href = 'pg2.html'; // Redirect to pg2.html
+        }
+    </script>
 </body>
 </html>

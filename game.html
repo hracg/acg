@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bullet Hit Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0; /* Light background */
+            position: relative; /* Position relative for absolute positioning of the image */
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        #startButton {
+            padding: 10px 20px;
+            font-size: 20px;
+            color: white;
+            background-color: #007bff; /* Button color */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            z-index: 1; /* Ensure the button is above the image */
+        }
+
+        #startButton:hover {
+            background-color: #0056b3; /* Darker shade on hover */
+        }
+
+        #randomImage {
+            position: absolute; /* Position the image absolutely */
+            display: none; /* Initially hidden */
+            max-width: 15%; /* Set a maximum width for responsiveness */
+            height: auto; /* Maintain aspect ratio */
+            z-index: 0; /* Ensure the image is below the button */
+            transition: left 0.3s, top 0.3s; /* Smooth transition for movement */
+        }
+
+        #circle {
+            position: absolute;
+            bottom: 20px; /* Position circle at the bottom */
+            left: 50%; /* Center horizontally */
+            transform: translateX(-50%); /* Center the circle */
+            width: 50px; /* Circle size */
+            height: 50px; /* Circle size */
+            background-color: #007bff; /* Circle color */
+            border-radius: 50%; /* Make it a circle */
+            z-index: 1; /* Ensure the circle is above the background */
+        }
+
+        #bullet {
+            position: absolute; /* Position the bullet absolutely */
+            display: none; /* Initially hidden */
+            width: 20px; /* Bullet size */
+            height: auto; /* Maintain aspect ratio */
+            z-index: 2; /* Ensure the bullet is above the circle */
+        }
+    </style>
+</head>
+<body>
+    <button id="startButton">Start</button>
+    <img id="randomImage" src="img.jpg" alt="Random Image"> <!-- Image file name is img.jpg -->
+    <div id="circle"></div>
+    <img id="bullet" src="bullet.jpg" alt="Bullet"> <!-- Bullet image file name is bullet.jpg -->
+
+    <script>
+        let clickCount = 0; // Counter for the number of clicks
+        const maxClicks = 100; // Maximum number of clicks allowed
+
+        document.getElementById('startButton').addEventListener('click', function() {
+            const image = document.getElementById('randomImage');
+            const button = document.getElementById('startButton');
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+
+            // Generate random positions
+            const randomX = Math.random() * (windowWidth - 100); // Subtract image width to keep it in view
+            const randomY = Math.random() * (windowHeight - 100); // Subtract image height to keep it in view
+
+            // Set the position of the image
+            image.style.left = `${randomX}px`;
+            image.style.top = `${randomY}px`;
+            image.style.display = 'block'; // Show the image
+
+            // Hide the start button
+            button.style.display = 'none';
+
+            // Add click event to the image
+            image.addEventListener('click', moveBullet);
+        });
+
+        function moveBullet() {
+            if (clickCount < maxClicks) {
+                const bullet = document.getElementById('bullet');
+                const circle = document.getElementById('circle');
+                const image = document.getElementById('randomImage');
+                const imageRect = image.getBoundingClientRect(); // Get the position of the image
+                const circleRect = circle.getBoundingClientRect(); // Get the position of the circle
+
+                // Set the initial position of the bullet
+                bullet.style.left = `${circleRect.left + circleRect.width / 2 - 10}px`; // Center the bullet in the circle
+                bullet.style.top = `${ circleRect.top + circleRect.height / 2 - 10}px`; // Center the bullet in the circle
+                bullet.style.display = 'block'; // Show the bullet
+
+                // Animate the bullet to move towards the image
+                const bulletAnimation = bullet.animate([
+                    { transform: `translate(0, 0)` },
+                    { transform: `translate(${imageRect.left - circleRect.left - circleRect.width / 2 + 10}px, ${imageRect.top - circleRect.top - circleRect.height / 2 + 10}px)` }
+                ], {
+                    duration: 500, // Duration of the animation
+                    fill: 'forwards' // Keep the final state of the animation
+                });
+
+                bulletAnimation.onfinish = function() {
+                    image.style.display = 'none'; // Hide the image after the bullet hits
+                    bullet.style.display = 'none'; // Hide the bullet after hitting
+                };
+
+                clickCount++; // Increment the click count
+            } else {
+                alert('You have reached the maximum number of clicks!'); // Alert when max clicks are reached
+            }
+        }
+    </script>
+</body>
+</html>
