@@ -3,218 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comment Box with Fixed Username</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-        }
-
-        #username {
-            width: 300px;
-            margin-bottom: 10px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-
-        #commentBox {
-            width: 300px;
-            height: 100px;
-            margin-bottom: 10px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            resize: none; /* Prevent resizing */
-        }
-
-        #postButton {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        #postButton:hover {
-            background-color: #0056b3;
-        }
-
-        #comments {
-            margin-top: 20px;
-            width: 300px;
-            max-height: 300px;
-            overflow-y: auto; /* Enable scrolling */
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background-color: white;
-            padding: 10px;
-        }
-
-        .comment {
-            padding: 5px;
-            border-bottom: 1px solid #eee;
-            position: relative; /* For positioning the delete option */
-        }
-
-        .comment:last-child {
-            border-bottom: none; /* Remove border for the last comment */
-        }
-
-        .delete-option {
-            display: none; /* Initially hidden */
-            position: absolute;
-            right: 0;
-            top: 0;
-            background-color: #ff4d4d; /* Red background for delete option */
-            color: white;
-            padding: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        img {
-            max-width: 100%; /* Responsive image */
-            height: auto; /* Maintain aspect ratio */
-        }
-    </style>
+    <title>Chatter Box</title>
+    <style>body{font-family:Arial,sans-serif;background-color:#f5f5f5;margin:0;padding:20px}.container{width:80%;margin:0 auto}h1{text-align:center;color:#333}.comments-box{margin-top:20px;background-color:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.1)}.comment{padding:10px;border-bottom:1px solid #ddd}.comment:last-child{border-bottom:none}input[type="text"]{width:80%;padding:10px;margin-right:10px;border-radius:5px;border:1px solid #ddd}button{padding:10px 15px;background-color:#4CAF50;color:white;border:none;border-radius:5px;cursor:pointer}button:hover{background-color:#45a049}</style>
 </head>
 <body>
-    <h1>Comment Box</h1>
-    <input type="text" id="username" placeholder="Enter your username (alphabets only)" required>
-    <textarea id="commentBox" placeholder="Write your comment here..."></textarea><br>
-    <input type="file" id="commentImage" accept="image/*"><br>
-    <button id="postButton" disabled>Post Comment</button>
-
-    <div id="comments"></div>
-
-    <script>
-        const commentLifetime = 30 * 60 * 1000; // 30 minutes in milliseconds
-
-        // Function to load comments from localStorage
-        function loadComments() {
-            const comments = JSON.parse(localStorage.getItem('comments')) || [];
-            const commentsDiv = document.getElementById('comments');
-            commentsDiv.innerHTML = ''; // Clear existing comments
-            comments.forEach(comment => {
-                const commentDiv = document.createElement('div');
-                commentDiv.className = 'comment';
-                commentDiv.textContent = `${comment.username}: ${comment.text}`;
-                commentDiv.dataset.timestamp = comment.timestamp; // Store the timestamp
-                commentDiv.dataset.username = comment.username; // Store the username
-
-                // Create delete option
-                const deleteOption = document.createElement('div');
-                deleteOption.className = 'delete-option';
-                deleteOption.textContent = 'Delete';
-                deleteOption.onclick = function() {
-                    deleteComment(commentDiv);
-                };
-
-                commentDiv.ondblclick = function() {
-                    if (comment.username === localStorage.getItem('username')) {
-                        deleteOption.style.display = 'block'; // Show delete option on double click
-                    }
-                };
-
-                commentDiv.onmouseleave = function() {
-                    deleteOption.style.display = 'none'; // Hide delete option when mouse leaves
-                };
-
-                // Display the uploaded image if it exists
-                if (comment.image) {
-                    const img = document.createElement('img');
-                    img.src = comment.image; 
-                    commentDiv.appendChild(img);
-                }
-
-                commentDiv.appendChild(deleteOption);
-                commentsDiv.appendChild(commentDiv);
-            });
+<div class="container">
+    <h1>Chatter Box</h1>
+    <div class="comments-box">
+        <input type="text" id="commentInput" placeholder="Type your comment here...">
+        <button onclick="postComment()">Post Comment</button>
+    </div>
+    <div id="commentsList" class="comments-box"></div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database.js"></script>
+<script>
+    const firebaseConfig = {apiKey:"YOUR_API_KEY",authDomain:"YOUR_PROJECT_ID.firebaseapp.com",databaseURL:"https://YOUR_PROJECT_ID.firebaseio.com",projectId:"YOUR_PROJECT_ID",storageBucket:"YOUR_PROJECT_ID.appspot.com",messagingSenderId:"YOUR_SENDER_ID",appId:"YOUR_APP_ID"};
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database(app);
+    const commentsRef = database.ref('comments');
+    window.onload = () => {commentsRef.on('child_added', snapshot => {const comment = snapshot.val(); const newComment = document.createElement('div'); newComment.classList.add('comment'); newComment.textContent = comment.text; document.getElementById('commentsList').prepend(newComment);});};
+    function postComment() {
+        const commentText = document.getElementById('commentInput').value.trim();
+        if (commentText) {
+            commentsRef.push({text: commentText, timestamp: new Date().toISOString()});
+            document.getElementById('commentInput').value = "";
         }
-
-        // Function to set username and enable posting
-        document.getElementById('username').onblur = function() {
-            const existingUsername = localStorage.getItem('username');
-            if (!existingUsername && this.value) {
-                localStorage.setItem('username', this.value); // Store username in localStorage
-                this.style.display = 'none'; // Hide the username input
-                document.getElementById('postButton').disabled = false; // Enable the post button
-            } else if (existingUsername) {
-                this.value = existingUsername; // Set the input to the existing username
-                this.disabled = true; // Disable the input field
-            }
-        };
-
-        // Function to post a comment
-        document.getElementById('postButton').onclick = function() {
-            const username = localStorage.getItem('username');
-            const commentText = document.getElementById('commentBox').value;
-            const imageInput = document.getElementById('commentImage');
-            const imageFile = imageInput.files[0];
-
-            if (username && commentText) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const comments = JSON.parse(localStorage.getItem('comments')) || [];
-                    const newComment = {
-                        username: username,
-                        text: commentText,
-                        image: e.target.result,
-                        timestamp: Date.now()
-                    };
-                    comments.push(newComment);
-                    localStorage.setItem('comments', JSON.stringify(comments));
-                    loadComments();
-                    document.getElementById('commentBox').value = ''; // Clear comment box
-                    imageInput.value = ''; // Clear file input
-                };
-
-                if (imageFile) {
-                    reader.readAsDataURL(imageFile); // Read the image file
-                } else {
-                    const comments = JSON.parse(localStorage.getItem('comments')) || [];
-                    const newComment = {
-                        username: username,
-                        text: commentText,
-                        image: null,
-                        timestamp: Date.now()
-                    };
-                    comments.push(newComment);
-                    localStorage.setItem('comments', JSON.stringify(comments));
-                    loadComments();
-                    document.getElementById('commentBox').value = ''; // Clear comment box
-                }
-            } else {
-                alert('Please enter a comment.');
-            }
-        };
-
-        // Function to delete a comment
-        function deleteComment(commentDiv) {
-            const comments = JSON.parse(localStorage.getItem('comments')) || [];
-            const updatedComments = comments.filter(comment => {
-                return comment.timestamp !== parseInt(commentDiv.dataset.timestamp);
-            });
-            localStorage.setItem('comments', JSON.stringify(updatedComments));
-            loadComments();
-        }
-
-        // Load comments and username on page load
-        window.onload = function() {
-            loadComments();
-            const existingUsername = localStorage.getItem('username');
-            if (existingUsername) {
-                document.getElementById('username').value = existingUsername; // Set the input to the existing username
-                document.getElementById('username').style.display = 'none'; // Hide the username input
-                document.getElementById('postButton').disabled = false; // Enable the post button
-            }
-        };
-    </script>
+    }
+</script>
 </body>
 </html>
