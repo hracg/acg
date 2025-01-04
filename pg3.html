@@ -1,13 +1,62 @@
-<!--Start of Tawk.to Script-->
-<script type="text/javascript">
-var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-(function(){
-var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-s1.async=true;
-s1.src='https://embed.tawk.to/67726442af5bfec1dbe481b0/1igbdfact';
-s1.charset='UTF-8';
-s1.setAttribute('crossorigin','*');
-s0.parentNode.insertBefore(s1,s0);
-})();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Chat Box</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .chat-box {
+            width: 300px;
+            height: 400px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-messages {
+            flex: 1;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+        }
+        .chat-input {
+            display: flex;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 5px;
+        }
+        .chat-input button {
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-box">
+    <div class="chat-messages" id="chatMessages">
+        <!-- Messages will appear here -->
+    </div>
+    <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="Type a message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    function sendMessage() {
+        const input = document.getElementById('chatInput');
+        const messages = document.getElementById('chatMessages');
+        const message = document.createElement('div');
+        message.textContent = input.value;
+        messages.appendChild(message);
+        input.value = '';
+    }
 </script>
-<!--End of Tawk.to Script-->
+
+</body>
+</html>
