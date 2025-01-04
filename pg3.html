@@ -1,10 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatter Box</title>
-    <!--Start of Tawk.to Script-->
+<!--Start of Tawk.to Script-->
 <script type="text/javascript">
 var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
 (function(){
@@ -17,32 +11,3 @@ s0.parentNode.insertBefore(s1,s0);
 })();
 </script>
 <!--End of Tawk.to Script-->
-    <style>body{font-family:Arial,sans-serif;background-color:#f5f5f5;margin:0;padding:20px}.container{width:80%;margin:0 auto}h1{text-align:center;color:#333}.comments-box{margin-top:20px;background-color:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.1)}.comment{padding:10px;border-bottom:1px solid #ddd}.comment:last-child{border-bottom:none}input[type="text"]{width:80%;padding:10px;margin-right:10px;border-radius:5px;border:1px solid #ddd}button{padding:10px 15px;background-color:#4CAF50;color:white;border:none;border-radius:5px;cursor:pointer}button:hover{background-color:#45a049}</style>
-</head>
-<body>
-<div class="container">
-    <h1>Chatter Box</h1>
-    <div class="comments-box">
-        <input type="text" id="commentInput" placeholder="Type your comment here...">
-        <button onclick="postComment()">Post Comment</button>
-    </div>
-    <div id="commentsList" class="comments-box"></div>
-</div>
-<script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database.js"></script>
-<script>
-    const firebaseConfig = {apiKey:"YOUR_API_KEY",authDomain:"YOUR_PROJECT_ID.firebaseapp.com",databaseURL:"https://YOUR_PROJECT_ID.firebaseio.com",projectId:"YOUR_PROJECT_ID",storageBucket:"YOUR_PROJECT_ID.appspot.com",messagingSenderId:"YOUR_SENDER_ID",appId:"YOUR_APP_ID"};
-    const app = firebase.initializeApp(firebaseConfig);
-    const database = firebase.database(app);
-    const commentsRef = database.ref('comments');
-    window.onload = () => {commentsRef.on('child_added', snapshot => {const comment = snapshot.val(); const newComment = document.createElement('div'); newComment.classList.add('comment'); newComment.textContent = comment.text; document.getElementById('commentsList').prepend(newComment);});};
-    function postComment() {
-        const commentText = document.getElementById('commentInput').value.trim();
-        if (commentText) {
-            commentsRef.push({text: commentText, timestamp: new Date().toISOString()});
-            document.getElementById('commentInput').value = "";
-        }
-    }
-</script>
-</body>
-</html>
