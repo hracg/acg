@@ -33,6 +33,9 @@
         .chat-input button {
             padding: 5px 10px;
         }
+        .share-link {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -45,6 +48,9 @@
         <input type="text" id="chatInput" placeholder="Type a message...">
         <button onclick="sendMessage()">Send</button>
     </div>
+    <div class="share-link">
+        <a href="#" id="shareLink">Share this chat</a>
+    </div>
 </div>
 
 <script>
@@ -55,7 +61,23 @@
         message.textContent = input.value;
         messages.appendChild(message);
         input.value = '';
+        // In a real application, this is where you'd send the message to the backend server
     }
+
+    function generateShareLink() {
+        const shareLink = document.getElementById('shareLink');
+        const currentUrl = window.location.href;
+        // Generate a unique link for sharing
+        shareLink.href = currentUrl + '?chat=' + generateUniqueId();
+        shareLink.textContent = 'Copy this link to share the chat';
+    }
+
+    function generateUniqueId() {
+        return Math.random().toString(36).substr(2, 9);
+    }
+
+    // Call the function to generate the share link
+    generateShareLink();
 </script>
 
 </body>
