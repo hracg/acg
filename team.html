@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Grid</title>
+  <style>
+    /* Basic Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Body Style */
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f4f4f4;
+    }
+
+    /* Grid Container */
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 20px;
+      width: 90%;
+      max-width: 800px;
+    }
+
+    /* Grid Box */
+    .grid-box {
+      position: relative;
+      overflow: hidden;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .grid-box:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Images inside grid boxes */
+    .grid-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Grid Container -->
+  <div class="grid-container">
+    <a href="players.html" class="grid-box">
+      <img src="csk.jpg" alt="CSK">
+    </a>
+    <a href="players.html" class="grid-box">
+      <img src="rcb.jpg" alt="RCB">
+    </a>
+    <a href="players.html" class="grid-box">
+      <img src="rr.png" alt="RR">
+    </a>
+    <a href="players.html" class="grid-box">
+      <img src="kkr.jpg" alt="KKR">
+    </a>
+    <a href="players.html" class="grid-box">
+      <img src="srh.jpg" alt="SRH">
+    </a>
+    <a href="players.html" class="grid-box">
+      <img src="mi.jpg" alt="MI">
+    </a>
+  </div>
+</body>
+</html>

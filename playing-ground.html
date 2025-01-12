@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playing Ground</title>
+    <style>
+        body {
+            background-color: yellow;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100vh;
+            position: relative;
+        }
+        .info-icon {
+            width: 30px;
+            height: 30px;
+            background-color: white;
+            color: black;
+            font-weight: bold;
+            font-size: 20px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .bot-info, .player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .bot-info img, .player-info img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid black;
+        }
+        .bot-info span, .player-info span {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .opt-box, .monitor-box {
+            width: 150px;
+            height: 150px;
+            background-color: white;
+            border: 2px solid black;
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .opt-box img, .monitor-box img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .mini-boxes {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            position: absolute;
+            bottom: 20px;
+        }
+        .mini-box {
+            width: 50px;
+            height: 50px;
+            border: 2px solid black;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .mini-box img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .action-button {
+            display: none;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .action-button:hover {
+            background-color: #0056b3;
+        }
+        .popup-image {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 999;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Info Icon -->
+    <div class="info-icon" onclick="togglePlayerList()">i</div>
+
+    <!-- BOT Info -->
+    <div class="bot-info" id="bot-info" style="display: none;">
+        <img src="bot.jpg" alt="BOT">
+        <span>BOT: 0</span>
+    </div>
+
+    <!-- Player Info -->
+    <div class="player-info" id="player-info">
+        <!-- Player Image and Name will be displayed here -->
+    </div>
+
+    <!-- Opt Box -->
+    <div class="opt-box" id="opt-box">
+        <p>Random Image</p>
+    </div>
+
+    <!-- Monitor Box -->
+    <div class="monitor-box" id="monitor-box">
+        <p>Select an image</p>
+    </div>
+
+    <!-- Mini Boxes -->
+    <div class="mini-boxes">
+        <div class="mini-box" onclick="showInMonitor('1.jpg')"><img src="1.jpg" alt="1"></div>
+        <div class="mini-box" onclick="showInMonitor('2.jpg')"><img src="2.jpg" alt="2"></div>
+        <div class="mini-box" onclick="showInMonitor('3.jpg')"><img src="3.jpg" alt="3"></div>
+        <div class="mini-box" onclick="showInMonitor('4.jpg')"><img src="4.jpg" alt="4"></div>
+        <div class="mini-box" onclick="showInMonitor('5.jpg')"><img src="5.jpg" alt="5"></div>
+        <div class="mini-box" onclick="showInMonitor('6.jpg')"><img src="6.jpg" alt="6"></div>
+        <div class="mini-box" onclick="showInMonitor('7.jpg')"><img src="7.jpg" alt="7"></div>
+    </div>
+
+    <!-- Next Button -->
+    <button class="action-button" id="next-button" onclick="prepareBowling()">Next</button>
+
+    <!-- Bowling Button -->
+    <button class="action-button" id="bowling-button" onclick="startBowling()">Bowling</button>
+
+    <!-- Popup Image -->
+    <img src="loss.jpg" alt="You Lost" class="popup-image" id="loss-popup" onclick="redirectToThanks()">
+
+    <script>
+        const runMap = { '1.jpg': 1, '2.jpg': 2, '3.jpg': 3, '4.jpg': 4, '5.jpg': 5, '6.jpg': 6 };
+        let monitorScore = 0;
+        let botScore = 0;
+        let isGameOver = false;
+        let isPlayerBatting = true;
+
+        // Track popups (excluding loss.jpg)
+        let popupCount = 0;
+
+        // Load chosen player from localStorage
+        const chosenPlayer = JSON.parse(localStorage.getItem('selectedPlayers'))[0];
+        const playerInfoDiv = document.getElementById('player-info');
+        const botInfoDiv = document.getElementById('bot-info');
+        let playerScore = 0;
+
+        // Display chosen player info
+        function displayPlayerInfo() {
+            playerInfoDiv.innerHTML = `
+                <img src="${chosenPlayer.image}" alt="${chosenPlayer.name}">
+                <span>${chosenPlayer.name}: ${playerScore}</span>
+            `;
+        }
+
+        displayPlayerInfo();
+
+        function showInMonitor(imageName) {
+            if (isGameOver) return;
+
+            const monitorBox = document.getElementById('monitor-box');
+            monitorBox.innerHTML = `<img src="${imageName}" alt="Selected Image">`;
+
+            const optImage = displayRandomImageInOptBox();
+            updateScores(imageName, optImage);
+
+            if (imageName === optImage) {
+                isGameOver = true;
+                alert("U R OUT! Vicket!");
+                document.getElementById('next-button').style.display = 'block';
+                trackPopup();
+            }
+        }
+
+        function displayRandomImageInOptBox() {
+            const optBox = document.getElementById('opt-box');
+            const randomIndex = Math.floor(Math.random() * 7) + 1;
+            const randomImage = `${randomIndex}.jpg`;
+            optBox.innerHTML = `<img src="${randomImage}" alt="Random Image">`;
+            return randomImage;
+        }
+
+        function updateScores(monitorImage, optImage) {
+            if (runMap[optImage]) {
+                botScore += runMap[optImage];
+                botInfoDiv.querySelector('span').textContent = `BOT: ${botScore}`;
+            }
+
+            if (optImage === '7.jpg' && runMap[monitorImage]) {
+                botScore += runMap[monitorImage];
+                botInfoDiv.querySelector('span').textContent = `BOT: ${botScore}`;
+            }
+
+            if (isPlayerBatting && runMap[monitorImage]) {
+                playerScore += runMap[monitorImage];
+            }
+
+            displayPlayerInfo();
+
+            if (!isPlayerBatting && botScore > playerScore) {
+                showLossPopup();
+            }
+        }
+
+        function prepareBowling() {
+            document.getElementById('next-button').style.display = 'none';
+            document.getElementById('bowling-button').style.display = 'block';
+            document.getElementById('monitor-box').innerHTML = `<img src="rst.jpg" alt="Reset Monitor">`;
+            document.getElementById('opt-box').innerHTML = `<img src="rst2.jpg" alt="Reset Opt Box">`;
+            alert("U R BOWLING");
+        }
+
+        function startBowling() {
+            botScore = 0; // Reset BOT score
+            botInfoDiv.querySelector('span').textContent = `BOT: ${botScore}`;
+            document.getElementById('bowling-button').style.display = 'none';
+            botInfoDiv.style.display = 'flex';
+            isPlayerBatting = false;
+            isGameOver = false;
+        }
+
+        function showLossPopup() {
+            const lossPopup = document.getElementById('loss-popup');
+            lossPopup.style.display = 'block';
+        }
+
+        function redirectToThanks() {
+            window.location.href = 'thanks.html';
+        }
+
+        function trackPopup() {
+            popupCount++;
+            if (popupCount === 2) {
+                window.location.href = 'win.html';
+            }
+        }
+    </script>
+</body>
+</html>

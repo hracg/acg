@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Players List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background-color: #f0f0f0;
+            position: relative;
+        }
+        .container {
+            width: 90%;
+            max-width: 800px;
+            margin: 20px auto;
+        }
+        .player-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .player-box img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 15px;
+            object-fit: cover;
+        }
+        .player-box p {
+            font-size: 18px;
+            margin: 0;
+            flex-grow: 1;
+        }
+        .select-button {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .select-button.selected {
+            background-color: #28a745;
+        }
+        .add-box {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #007bff;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+        }
+        .form-container {
+            display: none;
+            flex-direction: column;
+            margin: 20px 0;
+        }
+        .form-container input {
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 16px;
+            width: 100%;
+        }
+        .form-container button {
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .form-container button:hover {
+            background-color: #218838;
+        }
+        #start-button {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #ffc107;
+            color: black;
+            border: none;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="player-list"></div>
+
+    <!-- Add Box Button -->
+    <div class="add-box" onclick="showForm()">+</div>
+
+    <!-- Form for adding new player -->
+    <div class="form-container" id="form-container">
+        <input type="file" id="player-image" accept="image/*">
+        <input type="text" id="player-name" placeholder="Enter player name">
+        <button onclick="addPlayer()">Add Player</button>
+    </div>
+
+    <!-- Start Button -->
+    <button id="start-button" onclick="goToPlayingGround()">Start</button>
+
+    <script>
+        const initialPlayers = [
+            { name: "Daryl Mitchell", image: "Daryl Mitchell.jpg" },
+            { name: "Rohit Sarma", image: "Moeen Ali.jpg" },
+            { name: "M.S.DHONI", image: "Rajvardhan Hangargekar.jpg" },
+            { name: "Ruturaj Gaikwad", image: "Ruturaj Gaikwad.jpg" },
+            { name: "SKY", image: "tpy.jpg" },
+            { name: "VIRAT KOHLI", image: "Shivam dube.jpg" }
+        ];
+
+        const playerList = document.getElementById('player-list');
+        const startButton = document.getElementById('start-button');
+        const savedPlayers = JSON.parse(localStorage.getItem('players')) || [];
+        let selectedPlayerIndex = null;
+
+        // Render all players
+        function renderPlayers() {
+            playerList.innerHTML = '';
+            const allPlayers = [...initialPlayers, ...savedPlayers];
+            allPlayers.forEach((player, index) => {
+                const newBox = document.createElement('div');
+                newBox.className = 'player-box';
+                newBox.innerHTML = `
+                    <div>
+                        ${player.image ? `<img src="${player.image}" alt="${player.name}">` : ''}
+                        <p>${player.name}</p>
+                    </div>
+                    <button class="select-button" onclick="selectPlayer(${index})">Select</button>
+                `;
+                playerList.appendChild(newBox);
+            });
+        }
+
+        function showForm() {
+            document.getElementById('form-container').style.display = 'flex';
+        }
+
+        function addPlayer() {
+            const playerName = document.getElementById('player-name').value;
+            const playerImageFile = document.getElementById('player-image').files[0];
+            let playerImageData = null;
+
+            if (!playerName) {
+                alert('Please enter a player name.');
+                return;
+            }
+
+            if (playerImageFile) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    playerImageData = event.target.result;
+                    savePlayer(playerName, playerImageData);
+                };
+                reader.readAsDataURL(playerImageFile);
+            } else {
+                savePlayer(playerName, playerImageData);
+            }
+        }
+
+        function savePlayer(name, image) {
+            savedPlayers.push({ name, image });
+            localStorage.setItem('players', JSON.stringify(savedPlayers));
+            renderPlayers();
+
+            // Clear form and hide
+            document.getElementById('player-name').value = '';
+            document.getElementById('player-image').value = '';
+            document.getElementById('form-container').style.display = 'none';
+        }
+
+        function selectPlayer(index) {
+            // Deselect previously selected player
+            if (selectedPlayerIndex !== null) {
+                document.querySelectorAll('.select-button')[selectedPlayerIndex].classList.remove('selected');
+                document.querySelectorAll('.select-button')[selectedPlayerIndex].textContent = 'Select';
+            }
+
+            // Select the new player
+            selectedPlayerIndex = index;
+            const button = document.querySelectorAll('.select-button')[index];
+            button.classList.add('selected');
+            button.textContent = 'Selected';
+
+            // Show Start button
+            startButton.style.display = 'block';
+        }
+
+        function goToPlayingGround() {
+            const allPlayers = [...initialPlayers, ...savedPlayers];
+            const selected = [allPlayers[selectedPlayerIndex]];
+            localStorage.setItem('selectedPlayers', JSON.stringify(selected));
+            window.location.href = 'playing-ground.html';
+        }
+
+        // Render players on page load
+        renderPlayers();
+    </script>
+</body>
+</html>
