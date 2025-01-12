@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Responsive Bar</title>
+  <style>
+    /* Basic Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Body Style */
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+    }
+
+    /* Bar Box Style */
+    .bar-box {
+      display: block;
+      width: 100%; /* Full-width */
+      background-color: #28a745;
+      padding: 20px 0; /* Vertical padding for height */
+      text-align: center;
+      position: fixed; /* Stick near the top */
+      top: 20px; /* Slightly moved down from the top */
+      left: 0;
+      text-decoration: none;
+      z-index: 1000; /* Ensure it's above other elements */
+      transition: background-color 0.3s ease;
+    }
+
+    .bar-box:hover {
+      background-color: #218838;
+    }
+
+    /* Text Style */
+    .bar-text {
+      font-size: 1.8em;
+      color: white;
+      font-weight: bold;
+      letter-spacing: 1.5px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .bar-text {
+        font-size: 1.5em;
+      }
+
+      .bar-box {
+        padding: 15px 0;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .bar-text {
+        font-size: 1.2em;
+      }
+
+      .bar-box {
+        padding: 10px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Slightly moved-down bar -->
+  <a href="pg2.html" class="bar-box">
+    <span class="bar-text">CRICKET</span>
+  </a>
+</body>
+</html>
