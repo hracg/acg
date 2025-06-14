@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Responsive Bird Shooting Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-image: url('background.jpg');
+      background-size: cover;
+      background-position: center;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    #gameArea {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .bird {
+      position: absolute;
+      width: 10vw;
+      max-width: 80px;
+      height: auto;
+      top: 8vh;
+      transition: transform 0.2s;
+    }
+
+    #gun {
+      position: absolute;
+      bottom: 6vh;
+      width: 12vw;
+      max-width: 100px;
+      height: auto;
+    }
+
+    .bullet {
+      position: absolute;
+      width: 3vw;
+      max-width: 20px;
+      height: auto;
+    }
+
+    #shootButton {
+      position: absolute;
+      bottom: 5vh;
+      right: 5vw;
+      padding: 2vh 4vw;
+      background-color: red;
+      color: white;
+      font-size: 4vw;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      z-index: 1000;
+    }
+
+    #winPopup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 5vh 5vw;
+      border: 4px solid red;
+      text-align: center;
+      display: none;
+      z-index: 2000;
+    }
+
+    #winPopup img {
+      width: 30vw;
+      max-width: 150px;
+      display: block;
+      margin: 0 auto 2vh;
+    }
+
+    #winPopup h1 {
+      color: red;
+      font-size: 5vw;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameArea">
+    <img id="gun" src="gun.jpg" />
+    <button id="shootButton">Shoot</button>
+
+    <div id="winPopup">
+      <img src="redbox.jpg" alt="Win Box" />
+      <h1>You Won the Game!</h1>
+    </div>
+  </div>
+
+  <script>
+    const gameArea = document.getElementById('gameArea');
+    const shootButton = document.getElementById('shootButton');
+    const gun = document.getElementById('gun');
+    const winPopup = document.getElementById('winPopup');
+
+    const baseBirdSpeed = 2;
+    const bulletSpeed = 10;
+    const gunSpeed = baseBirdSpeed / 2;
+    const birdCount = 10;
+
+    let gunX = 30;
+    let gunDirection = 1;
+    let birds = [];
+    let bulletAngle = 90; // default straight up
+
+    function getGunWidth() {
+      return gun.offsetWidth || 100;
+    }
+
+    function spawnBirds() {
+      for (let i = 0; i < birdCount; i++) {
+        const bird = document.createElement('img');
+        bird.src = 'bird.jpg';
+        bird.className = 'bird';
+        bird.style.top = 8 + Math.random() * 10 + 'vh';
+
+        const direction = Math.random() < 0.5 ? 1 : -1;
+        const speed = baseBirdSpeed + Math.random();
+        const startX = direction === 1 ? -100 : window.innerWidth + 100;
+        bird.style.left = startX + 'px';
+        if (direction === -1) bird.style.transform = 'scaleX(-1)';
+
+        gameArea.appendChild(bird);
+
+        birds.push({
+          element: bird,
+          x: startX,
+          speed,
+          baseSpeed: speed,
+          direction,
+          startTime: Date.now()
+        });
+      }
+    }
+
+    function moveBirds() {
+      const now = Date.now();
+
+      birds.forEach((birdObj) => {
+        if (!birdObj.element) return;
+
+        const elapsed = (now - birdObj.startTime) / 1000;
+        birdObj.speed = birdObj.baseSpeed + 0.5 * Math.sin(elapsed);
+
+        birdObj.x += birdObj.speed * birdObj.direction;
+        birdObj.element.style.left = birdObj.x + 'px';
+
+        if (birdObj.x < -100 || birdObj.x > window.innerWidth + 100) {
+          birdObj.direction *= -1;
+          // Flip bird image
+          birdObj.element.style.transform = birdObj.direction === -1 ? 'scaleX(-1)' : 'scaleX(1)';
+        }
+      });
+
+      requestAnimationFrame(moveBirds);
+    }
+
+    function moveGun() {
+      gunX += gunSpeed * gunDirection;
+
+      const gunW = getGunWidth();
+      const screenW = window.innerWidth;
+
+      if (gunX <= 0) {
+        gunDirection = 1;
+        bulletAngle = 77; // left edge
+      } else if (gunX + gunW >= screenW) {
+        gunDirection = -1;
+        bulletAngle = 103; // right edge
+      } else {
+        bulletAngle = 90; // center/default
+      }
+
+      gun.style.left = gunX + 'px';
+      requestAnimationFrame(moveGun);
+    }
+
+    shootButton.addEventListener('click', () => {
+      const bullet = document.createElement('img');
+      bullet.src = 'bullet.jpg';
+      bullet.className = 'bullet';
+
+      const gunRect = gun.getBoundingClientRect();
+      let bulletX = gunRect.left + gun.offsetWidth / 2 - 10;
+      let bulletY = window.innerHeight - 100;
+
+      bullet.style.left = bulletX + 'px';
+      bullet.style.top = bulletY + 'px';
+      gameArea.appendChild(bullet);
+
+      const angle = bulletAngle * (Math.PI / 180);
+      const vx = bulletSpeed * Math.cos(angle);
+      const vy = bulletSpeed * Math.sin(angle);
+
+      const interval = setInterval(() => {
+        bulletX += vx;
+        bulletY -= vy;
+        bullet.style.left = bulletX + 'px';
+        bullet.style.top = bulletY + 'px';
+
+        birds.forEach((birdObj) => {
+          if (!birdObj.element) return;
+
+          const birdRect = birdObj.element.getBoundingClientRect();
+          const bulletRect = bullet.getBoundingClientRect();
+
+          if (
+            bulletRect.left < birdRect.right &&
+            bulletRect.right > birdRect.left &&
+            bulletRect.top < birdRect.bottom &&
+            bulletRect.bottom > birdRect.top
+          ) {
+            birdObj.element.remove();
+            birdObj.element = null;
+            bullet.remove();
+            clearInterval(interval);
+            checkWin();
+          }
+        });
+
+        if (
+          bulletY < -20 ||
+          bulletX < -20 ||
+          bulletX > window.innerWidth + 20
+        ) {
+          bullet.remove();
+          clearInterval(interval);
+        }
+      }, 20);
+    });
+
+    function checkWin() {
+      const remaining = birds.filter(b => b.element !== null);
+      if (remaining.length === 0) {
+        winPopup.style.display = 'block';
+      }
+    }
+
+    // INIT
+    spawnBirds();
+    moveBirds();
+    moveGun();
+  </script>
+</body>
+</html>
