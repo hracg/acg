@@ -1,1 +1,77 @@
-<p> ya its working</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Documents</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        td a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        td a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Download Documents</h1>
+
+    <table>
+        <thead>
+            <tr>
+                <th>S. No.</th>
+                <th>File Name</th>
+                <th>Download</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Row for Signature File -->
+            <tr>
+                <td>1</td>
+                <td>Signature</td>
+                <td><a href="SIGNATURE.jpg" download="SIGNATURE.jpg">Download Signature</a></td>
+            </tr>
+            <!-- Row for Aadhaar File -->
+            <tr>
+                <td>2</td>
+                <td>Aadhaar</td>
+                <td><a href="Aadhaar.jpg" download="Aadhaar.jpg">Download Aadhaar</a></td>
+            </tr>
+            <!-- Row for Photograph File -->
+            <tr>
+                <td>3</td>
+                <td>Photograph</td>
+                <td><a href="photo.jpg" download="photo.jpg">Download Photograph</a></td>
+            </tr>
+            <!-- Row for Marksheet File -->
+            <tr>
+                <td>4</td>
+                <td>Marksheet</td>
+                <td><a href="marksheet.pdf" download="marksheet.pdf">Download Marksheet</a></td>
+            </tr>
+        </tbody>
+    </table>
+
+</body>
+</html>
