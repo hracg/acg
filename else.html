@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERROR 2022</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: #0a0e27;
+        }
+
+        .animated-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #1a1a2e, #16213e, #0f3460, #1a1a2e);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            z-index: 1;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .stars {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .floating-particles {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: rgba(255, 100, 100, 0.6);
+            border-radius: 50%;
+            animation: float 6s infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100vh) translateX(100px);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        .error-code {
+            font-size: 150px;
+            font-weight: bold;
+            color: #ff0055;
+            text-shadow: 0 0 20px #ff0055, 0 0 40px #ff0055, 0 0 60px #ff0055;
+            animation: glow 2s ease-in-out infinite, flicker 0.15s infinite;
+            letter-spacing: 10px;
+        }
+
+        @keyframes glow {
+            0%, 100% {
+                text-shadow: 0 0 20px #ff0055, 0 0 40px #ff0055, 0 0 60px #ff0055;
+            }
+            50% {
+                text-shadow: 0 0 30px #ff0055, 0 0 50px #ff0055, 0 0 80px #ff0055, 0 0 100px #ff0055;
+            }
+        }
+
+        @keyframes flicker {
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+                opacity: 1;
+            }
+            20%, 24%, 55% {
+                opacity: 0.8;
+            }
+        }
+
+        .error-message {
+            font-size: 48px;
+            color: #ffffff;
+            margin-top: 30px;
+            text-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
+            animation: slideIn 1s ease-out;
+            letter-spacing: 3px;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-description {
+            font-size: 20px;
+            color: #00d4ff;
+            margin-top: 20px;
+            text-align: center;
+            animation: fadeInUp 1.5s ease-out;
+            max-width: 600px;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1) 0px,
+                rgba(0, 0, 0, 0.1) 2px,
+                transparent 2px,
+                transparent 4px
+            );
+            animation: scanlines-move 8s linear infinite;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        @keyframes scanlines-move {
+            0% {
+                transform: translateY(0);
+            }
+            100% {
+                transform: translateY(10px);
+            }
+        }
+
+        .warning-icon {
+            font-size: 100px;
+            margin-bottom: 30px;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        .button {
+            margin-top: 50px;
+            padding: 15px 40px;
+            font-size: 18px;
+            background: linear-gradient(45deg, #ff0055, #ff4d7d);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.5);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(255, 0, 85, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(255, 0, 85, 0.8);
+            }
+        }
+
+        .button:hover {
+            transform: scale(1.1);
+            background: linear-gradient(45deg, #ff4d7d, #ff0055);
+            box-shadow: 0 0 50px rgba(255, 0, 85, 1);
+        }
+
+        .button:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-background"></div>
+    
+    <div class="container">
+        <div class="warning-icon">⚠️</div>
+        <div class="error-code">ERROR 2022</div>
+        <div class="error-message">SYSTEM MALFUNCTION</div>
+        <div class="error-description">
+            Something went wrong. The page you're looking for doesn't exist or encountered an unexpected error.
+        </div>
+        <button class="button" onclick="goBack()">GO BACK</button>
+    </div>
+
+    <div class="scanlines"></div>
+
+    <script>
+        // Generate random stars
+        function createStars() {
+            const background = document.querySelector('.animated-background');
+            for (let i = 0; i < 50; i++) {
+                const star = document.createElement('div');
+                star.className = 'stars';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                background.appendChild(star);
+            }
+        }
+
+        // Generate floating particles
+        function createParticles() {
+            const background = document.querySelector('.animated-background');
+            setInterval(() => {
+                const particle = document.createElement('div');
+                particle.className = 'floating-particles';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = '100vh';
+                particle.style.animationDelay = '0s';
+                particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+                background.appendChild(particle);
+
+                setTimeout(() => particle.remove(), 8000);
+            }, 300);
+        }
+
+        // Navigate back function
+        function goBack() {
+            window.history.back();
+        }
+
+        // Initialize animations
+        createStars();
+        createParticles();
+    </script>
+</body>
+</html>
