@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Family Tree Builder</title>
+
+<style>
+body{
+    margin:0;
+    background:yellow;
+    height:100vh;
+    overflow:hidden;
+    font-family:Arial,sans-serif;
+}
+
+.plus-btn{
+    position:fixed;
+    right:20px;
+    bottom:20px;
+    width:60px;
+    height:60px;
+    border:none;
+    border-radius:50%;
+    background:blue;
+    color:white;
+    font-size:36px;
+    cursor:pointer;
+    z-index:1000;
+}
+
+.minus-btn{
+    position:fixed;
+    right:90px;
+    bottom:20px;
+    width:60px;
+    height:60px;
+    border:none;
+    border-radius:50%;
+    background:blue;
+    color:white;
+    font-size:36px;
+    cursor:pointer;
+    z-index:1000;
+}
+
+.menu{
+    position:fixed;
+    right:25px;
+    bottom:90px;
+    z-index:1000;
+}
+
+.option{
+    width:50px;
+    height:50px;
+    margin-bottom:10px;
+    background:white;
+    border:2px solid black;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    opacity:0;
+    transform:translateY(30px);
+    transition:0.3s;
+    pointer-events:none;
+}
+
+.menu.show .option{
+    opacity:1;
+    transform:translateY(0);
+    pointer-events:auto;
+}
+
+.member{
+    position:absolute;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
+.shape{
+    border:2px solid black;
+    background:white;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-weight:bold;
+    padding:2px;
+    box-sizing:border-box;
+    overflow:hidden;
+}
+
+.circle{
+    border-radius:50%;
+}
+
+.square{
+    border-radius:0;
+}
+
+.diamond{
+    transform:rotate(45deg);
+}
+
+.diamond span{
+    transform:rotate(-45deg);
+}
+
+.green-btn{
+    width:16px;
+    height:16px;
+    background:green;
+    border-radius:50%;
+    margin-top:8px;
+    border:1px solid black;
+    cursor:pointer;
+}
+
+.selected{
+    outline:3px solid red;
+}
+</style>
+</head>
+<body>
+
+<div class="menu" id="menu">
+    <div class="option" onclick="addShape('circle')">?</div>
+    <div class="option" onclick="addShape('square')">?</div>
+    <div class="option" onclick="addShape('diamond')">?</div>
+</div>
+
+<button class="minus-btn" onclick="minimizeShapes()">-</button>
+<button class="plus-btn" onclick="toggleMenu()">+</button>
+
+<script>
+
+let selectedMember = null;
+let currentShapeSize = 70;
+
+function toggleMenu(){
+    document.getElementById("menu").classList.toggle("show");
+}
+
+function minimizeShapes(){
+
+    currentShapeSize -= 5;
+
+    if(currentShapeSize < 8){
+        currentShapeSize = 8;
+    }
+
+    document.querySelectorAll(".shape").forEach(shape=>{
+
+        shape.style.width = currentShapeSize + "px";
+        shape.style.height = currentShapeSize + "px";
+        shape.style.fontSize =
+            Math.max(4,currentShapeSize/6) + "px";
+
+    });
+}
+
+function addShape(type){
+
+    let name = prompt("Enter name:");
+
+    if(!name) return;
+
+    let member = document.createElement("div");
+    member.className = "member";
+
+    let shape = document.createElement("div");
+    shape.className = "shape " + type;
+
+    shape.style.width = currentShapeSize + "px";
+    shape.style.height = currentShapeSize + "px";
+    shape.style.fontSize =
+        Math.max(4,currentShapeSize/6) + "px";
+
+    if(type === "diamond"){
+        shape.innerHTML = "<span>" + name + "</span>";
+    }else{
+        shape.textContent = name;
+    }
+
+    let greenBtn = document.createElement("div");
+    greenBtn.className = "green-btn";
+
+    greenBtn.onclick = function(e){
+
+        e.stopPropagation();
+
+        document.querySelectorAll(".shape").forEach(s=>{
+            s.classList.remove("selected");
+        });
+
+        shape.classList.add("selected");
+        selectedMember = member;
+    };
+
+    member.appendChild(shape);
+    member.appendChild(greenBtn);
+
+    member.style.left =
+        Math.random() * (window.innerWidth - 100) + "px";
+
+    member.style.top =
+        Math.random() * (window.innerHeight - 120) + "px";
+
+    document.body.appendChild(member);
+}
+
+document.addEventListener("click", function(e){
+
+    if(selectedMember &&
+       !e.target.classList.contains("green-btn")){
+
+        selectedMember.style.left = e.pageX + "px";
+        selectedMember.style.top = e.pageY + "px";
+
+        selectedMember.querySelector(".shape")
+                      .classList.remove("selected");
+
+        selectedMember = null;
+    }
+});
+
+</script>
+
+</body>
+</html>
