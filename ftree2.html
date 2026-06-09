@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Family Tree Builder</title>
+<style>
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+body{
+    margin:0; background:yellow; height:100vh; overflow:hidden;
+    font-family:Arial,sans-serif; cursor:default;
+    user-select:none; -webkit-user-select:none;
+}
+#line-canvas{ position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0; }
+#line-canvas.bin-mode{ pointer-events:all; cursor:crosshair; }
+
+.plus-btn{ position:fixed;right:20px;bottom:20px;width:60px;height:60px;border:none;border-radius:50%;background:blue;color:white;font-size:36px;cursor:pointer;z-index:1000; }
+.minus-btn{ position:fixed;right:90px;bottom:20px;width:60px;height:60px;border:none;border-radius:50%;background:blue;color:white;font-size:36px;cursor:pointer;z-index:1000; }
+.save-btn{ position:fixed;right:160px;bottom:20px;width:120px;height:60px;border:none;border-radius:30px;background:green;color:white;font-size:18px;font-weight:bold;cursor:pointer;z-index:1000;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 3px 8px rgba(0,0,0,0.25); }
+.save-btn:active{ transform:scale(0.97); }
+.bin-btn{ position:fixed;right:290px;bottom:20px;width:60px;height:60px;border:none;border-radius:50%;background:blue;color:white;font-size:26px;cursor:pointer;z-index:1000;display:flex;align-items:center;justify-content:center;transition:background 0.2s; }
+.bin-btn.active{ background:red; box-shadow:0 0 0 4px orange; }
+
+.menu{ position:fixed;right:25px;bottom:90px;z-index:1000; }
+.option{ width:50px;height:50px;margin-bottom:10px;background:white;border:2px solid black;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transform:translateY(30px);transition:0.3s;pointer-events:none;font-size:22px; }
+.menu.show .option{ opacity:1;transform:translateY(0);pointer-events:auto; }
+.dot-option{ width:50px;height:50px;margin-bottom:10px;background:white;border:2px solid black;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transform:translateY(30px);transition:0.3s;pointer-events:none; }
+.dot-option .inner-dot{ width:10px;height:10px;background:red;border-radius:50%;border:1px solid #660000; }
+.menu.show .dot-option{ opacity:1;transform:translateY(0);pointer-events:auto; }
+
+.member{ position:absolute;display:flex;flex-direction:column;align-items:center;z-index:1; }
+body.bin-mode .member{ cursor:pointer; }
+.shape{ border:2px solid black;background:white;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:bold;padding:2px;overflow:hidden; }
+.circle{ border-radius:50%; }
+.square{ border-radius:0; }
+.diamond{ transform:rotate(45deg); }
+.diamond span{ transform:rotate(-45deg); }
+
+.dot-row{ display:flex;flex-direction:row;align-items:center;gap:6px;margin-top:6px; }
+.green-btn{ width:14px;height:14px;background:green;border-radius:50%;border:1px solid #004400;cursor:pointer;flex-shrink:0;transition:box-shadow 0.15s; }
+.green-btn.connecting{ box-shadow:0 0 0 4px orange; }
+
+/* free dot - placed freely on canvas */
+.free-dot{ position:absolute;width:14px;height:14px;background:red;border-radius:50%;border:1px solid #660000;cursor:pointer;z-index:2;transform:translate(-50%,-50%);transition:box-shadow 0.15s; }
+.free-dot.connecting{ box-shadow:0 0 0 4px orange; }
+
+/* junction dot - locked ON a line, moves with it */
+.junction-dot{ position:absolute;width:14px;height:14px;background:red;border-radius:50%;border:2px solid #880000;cursor:pointer;z-index:3;transform:translate(-50%,-50%);transition:box-shadow 0.15s; }
+.junction-dot.connecting{ box-shadow:0 0 0 4px orange; }
+
+.selected{ outline:3px solid red; }
+#saving-overlay{ display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:2000;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:bold; }
+#saving-overlay.show{ display:flex; }
+
+/* line-select highlight */
+.line-selected{ stroke:#ff6600 !important; }
+</style>
+</head>
+<body>
+<svg id="line-canvas"></svg>
+<div id="saving-overlay">Saving image…</div>
+
+<div class="menu" id="menu">
+    <div class="dot-option" id="dotOption"><div class="inner-dot"></div></div>
+    <div class="option" id="circleOption">⬤</div>
+    <div class="option" id="squareOption">■</div>
+    <div class="option" id="diamondOption">◆</div>
+</div>
+<button class="bin-btn" id="binBtn">🗑</button>
+<button class="save-btn" id="saveBtn">💾 Save</button>
+<button class="minus-btn" id="minusBtn">-</button>
+<button class="plus-btn" id="plusBtn">+</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════
+   UNIFIED POINTER
+══════════════════════════════════════════════════════════ */
+function getPos(e){
+    if(e.changedTouches && e.changedTouches.length) return { x:e.changedTouches[0].pageX, y:e.changedTouches[0].pageY };
+    if(e.touches && e.touches.length)               return { x:e.touches[0].pageX,        y:e.touches[0].pageY        };
+    return { x:e.pageX, y:e.pageY };
+}
+
+/* ══════════════════════════════════════════════════════════
+   IDs
+══════════════════════════════════════════════════════════ */
+let _mid=0, _gid=0, _did=0, _cid=0;
+const nMid = () => "m"+(++_mid);
+const nGid = () => "g"+(++_gid);
+const nDid = () => "d"+(++_did);
+const nCid = () => "c"+(++_cid);
+
+/* ══════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════ */
+let currentShapeSize = 70;
+let selectedMember   = null;
+let pendingDot       = null;   // { el, type:'dot'|'lineAnchor', connId, t }
+let pendingLine      = null;   // first line clicked for line-to-line bridge
+let placingDot       = false;
+let binMode          = false;
+
+/*
+  connections array — each entry is one of:
+  TYPE A — dot-to-dot:
+    { id, type:'dd', dotA_id, dotB_id, line }
+    dotA/dotB are referenced by their data-id (works for green-btn & free/junction dots)
+
+  TYPE B — line-anchor (junction dot locked on a line):
+    Junction dot element has:  dataset.jconn = parentConnId, dataset.jt = t
+    Its position is recomputed every frame from its parent line.
+    Connections FROM/TO junction dots are stored as type 'dd' (junction dot has normal data-did).
+
+  TYPE C — line-to-line bridge:
+    { id, type:'ll', connA_id, tA, connB_id, tB, line }
+    Both endpoints are always the midpoints (or click-t) of their parent lines.
+    Recomputed every frame.
+*/
+let connections = [];   // all drawn lines
+
+const svgEl  = document.getElementById("line-canvas");
+const binBtn = document.getElementById("binBtn");
+
+/* ══════════════════════════════════════════════════════════
+   LIVE POSITION HELPERS
+══════════════════════════════════════════════════════════ */
+function elCenter(el){
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width/2  + window.scrollX,
+             y: r.top  + r.height/2 + window.scrollY };
+}
+
+// Get live position of a connection's endpoint at parameter t (0=start,1=end)
+function connPosAt(conn, t){
+    // endpoints come from the dots that define this connection
+    const a = livePosByConnEndpoint(conn, 'A');
+    const b = livePosByConnEndpoint(conn, 'B');
+    if(!a || !b) return null;
+    return { x: a.x + (b.x-a.x)*t, y: a.y + (b.y-a.y)*t };
+}
+
+function livePosByConnEndpoint(conn, side){
+    const id = side === 'A' ? conn.dotA_id : conn.dotB_id;
+    const el = findDotEl(id);
+    if(!el) return null;
+    // if this dot is a junction dot, its position is already updated by updateJunctions()
+    return elCenter(el);
+}
+
+function findDotEl(id){
+    return document.querySelector(`[data-did="${id}"], [data-gid="${id}"]`);
+}
+function findConn(id){ return connections.find(c => c.id === id); }
+
+/* ══════════════════════════════════════════════════════════
+   JUNCTION DOTS — position locked to parent line
+══════════════════════════════════════════════════════════ */
+function updateJunctions(){
+    document.querySelectorAll(".junction-dot").forEach(jEl => {
+        const parentConnId = jEl.dataset.jconn;
+        const t            = parseFloat(jEl.dataset.jt);
+        const parentConn   = findConn(parentConnId);
+        if(!parentConn) return;
+        const pos = connPosAt(parentConn, t);
+        if(!pos) return;
+        jEl.style.left = pos.x + "px";
+        jEl.style.top  = pos.y + "px";
+    });
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER LOOP — redraw every line every frame
+══════════════════════════════════════════════════════════ */
+function renderLoop(){
+    updateJunctions();   // first: update junction dot positions (they feed into line endpoints)
+
+    connections.forEach(c => {
+        if(c.type === 'dd'){
+            const a = findDotEl(c.dotA_id), b = findDotEl(c.dotB_id);
+            if(!a || !b) return;
+            const pa = elCenter(a), pb = elCenter(b);
+            c.line.setAttribute("x1", pa.x); c.line.setAttribute("y1", pa.y);
+            c.line.setAttribute("x2", pb.x); c.line.setAttribute("y2", pb.y);
+        } else if(c.type === 'll'){
+            const ca = findConn(c.connA_id), cb = findConn(c.connB_id);
+            if(!ca || !cb) return;
+            const pa = connPosAt(ca, c.tA), pb = connPosAt(cb, c.tB);
+            if(!pa || !pb) return;
+            c.line.setAttribute("x1", pa.x); c.line.setAttribute("y1", pa.y);
+            c.line.setAttribute("x2", pb.x); c.line.setAttribute("y2", pb.y);
+        }
+    });
+
+    requestAnimationFrame(renderLoop);
+}
+requestAnimationFrame(renderLoop);
+
+/* ══════════════════════════════════════════════════════════
+   LINE HIT TEST  (returns { conn, t, px, py } or null)
+   — works for both type 'dd' and 'll'
+══════════════════════════════════════════════════════════ */
+function lineHitTest(pageX, pageY, excludeId){
+    const THRESH = 12;
+    let best = null, bestDist = THRESH;
+    connections.forEach(c => {
+        if(c.id === excludeId) return;
+        const x1 = parseFloat(c.line.getAttribute("x1")),
+              y1 = parseFloat(c.line.getAttribute("y1")),
+              x2 = parseFloat(c.line.getAttribute("x2")),
+              y2 = parseFloat(c.line.getAttribute("y2"));
+        const dx=x2-x1, dy=y2-y1, len2=dx*dx+dy*dy;
+        if(len2 === 0) return;
+        const t  = Math.max(0, Math.min(1, ((pageX-x1)*dx+(pageY-y1)*dy)/len2));
+        const nx = x1+t*dx, ny = y1+t*dy;
+        const dist = Math.sqrt((pageX-nx)**2+(pageY-ny)**2);
+        if(dist < bestDist){ bestDist = dist; best = { conn:c, t, px:nx, py:ny }; }
+    });
+    return best;
+}
+
+/* ══════════════════════════════════════════════════════════
+   DRAW A LINE ELEMENT
+══════════════════════════════════════════════════════════ */
+function makeSvgLine(){
+    const line = document.createElementNS("http://www.w3.org/2000/svg","line");
+    line.setAttribute("stroke","red");
+    line.setAttribute("stroke-width","3");
+    line.setAttribute("stroke-linecap","round");
+    svgEl.appendChild(line);
+    return line;
+}
+
+/* ══════════════════════════════════════════════════════════
+   DOT-TO-DOT CONNECTION
+══════════════════════════════════════════════════════════ */
+function drawDotLine(idA, idB, id){
+    const line = makeSvgLine();
+    const conn = { id: id || nCid(), type:'dd', dotA_id: idA, dotB_id: idB, line };
+    connections.push(conn);
+    return conn;
+}
+
+/* ══════════════════════════════════════════════════════════
+   LINE-TO-LINE BRIDGE CONNECTION
+══════════════════════════════════════════════════════════ */
+function drawLineBridge(connAId, tA, connBId, tB, id){
+    const line = makeSvgLine();
+    const conn = { id: id || nCid(), type:'ll', connA_id: connAId, tA, connB_id: connBId, tB, line };
+    connections.push(conn);
+    return conn;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CREATE JUNCTION DOT (locked on a parent line at param t)
+══════════════════════════════════════════════════════════ */
+function createJunctionDot(parentConnId, t, id){
+    const did = id || nDid();
+    const jEl = document.createElement("div");
+    jEl.className    = "junction-dot";
+    jEl.dataset.did  = did;
+    jEl.dataset.jconn= parentConnId;
+    jEl.dataset.jt   = t;
+    // initial position will be set by renderLoop
+    jEl.style.left = "0px"; jEl.style.top = "0px";
+    attachDotEvents(jEl);
+    document.body.appendChild(jEl);
+    return jEl;
+}
+
+/* ══════════════════════════════════════════════════════════
+   FREE DOT (absolute position on canvas)
+══════════════════════════════════════════════════════════ */
+function createFreeDot(x, y, id){
+    const did = id || nDid();
+    const el  = document.createElement("div");
+    el.className   = "free-dot";
+    el.dataset.did = did;
+    el.style.left  = x+"px";
+    el.style.top   = y+"px";
+    attachDotEvents(el);
+    document.body.appendChild(el);
+    return el;
+}
+
+/* ══════════════════════════════════════════════════════════
+   DOT EVENT HANDLING
+══════════════════════════════════════════════════════════ */
+function attachDotEvents(el){
+    const handler = e => { e.stopPropagation(); e.preventDefault(); onDotActivate(el); };
+    el.addEventListener("click",   handler);
+    el.addEventListener("touchend",handler);
+}
+
+// pendingLineSel: for line-to-line bridge mode
+let pendingLineSel = null; // { connId, t, highlightEl }
+
+function onDotActivate(dot){
+    if(binMode){ deleteDot(dot); persist(); return; }
+    cancelMove();
+    // cancel any line-to-line pending
+    if(pendingLineSel){ pendingLineSel.line.classList.remove("line-selected"); pendingLineSel=null; }
+
+    const dotId = dot.dataset.did || dot.dataset.gid;
+
+    if(!pendingDot){
+        pendingDot = { el: dot, id: dotId };
+        dot.classList.add("connecting");
+    } else if(pendingDot.el === dot){
+        dot.classList.remove("connecting");
+        pendingDot = null;
+    } else {
+        // connect pendingDot → this dot
+        drawDotLine(pendingDot.id, dotId);
+        pendingDot.el.classList.remove("connecting");
+        pendingDot = null;
+        persist();
+    }
+}
+
+/* ══════════════════════════════════════════════════════════
+   SHAPE MOVEMENT
+══════════════════════════════════════════════════════════ */
+function onShapeActivate(e, member, shape){
+    e.stopPropagation(); e.preventDefault();
+    if(binMode){ deleteMember(member); persist(); return; }
+    if(placingDot) return;
+    cancelPendingDot();
+    cancelPendingLine();
+    document.querySelectorAll(".shape").forEach(s => s.classList.remove("selected"));
+    shape.classList.add("selected");
+    selectedMember = member;
+}
+function cancelMove(){
+    if(selectedMember){ selectedMember.querySelector(".shape").classList.remove("selected"); selectedMember=null; }
+}
+function cancelPendingDot(){
+    if(pendingDot){ pendingDot.el.classList.remove("connecting"); pendingDot=null; }
+}
+function cancelPendingLine(){
+    if(pendingLineSel){ pendingLineSel.line.classList.remove("line-selected"); pendingLineSel=null; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   GLOBAL POINTER (canvas background clicks)
+══════════════════════════════════════════════════════════ */
+function onGlobalPointer(e){
+    const tgt = e.target, cls = tgt.classList;
+    const isUI = cls.contains("green-btn")   || cls.contains("free-dot") ||
+                 cls.contains("junction-dot")|| cls.contains("shape") ||
+                 cls.contains("plus-btn")    || cls.contains("minus-btn") ||
+                 cls.contains("save-btn")    || cls.contains("bin-btn") ||
+                 cls.contains("option")      || cls.contains("dot-option") ||
+                 cls.contains("inner-dot")   || tgt.closest && tgt.closest(".menu");
+    if(isUI) return;
+
+    const pos = getPos(e);
+
+    /* BIN MODE — delete line by tap */
+    if(binMode){
+        const hit = lineHitTest(pos.x, pos.y);
+        if(hit){ deleteConn(hit.conn); persist(); }
+        return;
+    }
+
+    /* LINE-TO-LINE MODE — second click on SVG line (via SVG element) */
+    // handled separately in svgEl click below; here we only handle canvas bg
+
+    /* PENDING DOT → click near a line = create junction dot on that line */
+    if(pendingDot){
+        const hit = lineHitTest(pos.x, pos.y);
+        if(hit){
+            const jDot = createJunctionDot(hit.conn.id, hit.t);
+            drawDotLine(pendingDot.id, jDot.dataset.did);
+            pendingDot.el.classList.remove("connecting");
+            pendingDot = null;
+            persist();
+        } else {
+            cancelPendingDot();
+        }
+        return;
+    }
+
+    /* PLACE FREE DOT MODE */
+    if(placingDot){
+        const hit = lineHitTest(pos.x, pos.y);
+        if(hit){
+            createJunctionDot(hit.conn.id, hit.t);
+        } else {
+            createFreeDot(pos.x, pos.y);
+        }
+        placingDot = false;
+        document.body.style.cursor = "";
+        persist();
+        return;
+    }
+
+    /* MOVE SHAPE */
+    if(selectedMember){
+        selectedMember.style.left = pos.x + "px";
+        selectedMember.style.top  = pos.y + "px";
+        selectedMember.querySelector(".shape").classList.remove("selected");
+        selectedMember = null;
+        persist();
+        return;
+    }
+
+    /* click on blank canvas = cancel pending line selection */
+    cancelPendingLine();
+}
+
+document.addEventListener("click",    onGlobalPointer);
+document.addEventListener("touchend", onGlobalPointer, {passive:false});
+
+/* ── SVG line clicks: dot-connect to line OR line-to-line bridge ── */
+svgEl.addEventListener("click", function(e){
+    const svgLine = e.target;
+    if(svgLine.tagName !== "line") return;
+    const pos  = getPos(e);
+    const hit  = lineHitTest(pos.x, pos.y);
+    if(!hit) return;
+
+    /* BIN: delete line */
+    if(binMode){ deleteConn(hit.conn); persist(); return; }
+
+    /* PENDING DOT → connect dot to this line via junction */
+    if(pendingDot){
+        e.stopPropagation();
+        const jDot = createJunctionDot(hit.conn.id, hit.t);
+        drawDotLine(pendingDot.id, jDot.dataset.did);
+        pendingDot.el.classList.remove("connecting");
+        pendingDot = null;
+        persist();
+        return;
+    }
+
+    /* LINE-TO-LINE BRIDGE */
+    e.stopPropagation();
+    if(!pendingLineSel){
+        // first line selected
+        pendingLineSel = { connId: hit.conn.id, t: hit.t, line: svgLine };
+        svgLine.classList.add("line-selected");
+    } else if(pendingLineSel.connId === hit.conn.id){
+        // same line — cancel
+        pendingLineSel.line.classList.remove("line-selected");
+        pendingLineSel = null;
+    } else {
+        // second line — draw bridge
+        pendingLineSel.line.classList.remove("line-selected");
+        drawLineBridge(pendingLineSel.connId, pendingLineSel.t, hit.conn.id, hit.t);
+        pendingLineSel = null;
+        persist();
+    }
+});
+svgEl.addEventListener("touchend", function(e){
+    // mirror for touch
+    svgEl.dispatchEvent(Object.assign(new MouseEvent("click"), {
+        pageX: e.changedTouches[0].pageX, pageY: e.changedTouches[0].pageY,
+        clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY
+    }));
+}, {passive:false});
+
+/* ══════════════════════════════════════════════════════════
+   DOT PLACEMENT MODE
+══════════════════════════════════════════════════════════ */
+function activateDotPlace(){
+    document.getElementById("menu").classList.remove("show");
+    cancelPendingDot(); cancelMove(); cancelPendingLine();
+    placingDot = true;
+    document.body.style.cursor = "crosshair";
+}
+
+/* ══════════════════════════════════════════════════════════
+   ADD SHAPE
+══════════════════════════════════════════════════════════ */
+let memberIdSeed=0, greenIdSeed=0;
+function _createMember(type, name, left, top, size, mid, gid_val){
+    size = size || currentShapeSize;
+    const member = document.createElement("div");
+    member.className = "member";
+    member.dataset.mid = mid || nMid();
+
+    const shape = document.createElement("div");
+    shape.className = "shape " + type;
+    shape.style.width    = size+"px";
+    shape.style.height   = size+"px";
+    shape.style.fontSize = Math.max(4, size/6)+"px";
+    shape.style.cursor   = "pointer";
+    shape.innerHTML = type==="diamond" ? "<span>"+name+"</span>" : name;
+    const shapeH = e => { e.stopPropagation(); e.preventDefault(); onShapeActivate(e, member, shape); };
+    shape.addEventListener("click",    shapeH);
+    shape.addEventListener("touchend", shapeH);
+
+    const dotRow  = document.createElement("div");
+    dotRow.className = "dot-row";
+    const gDot = document.createElement("div");
+    gDot.className   = "green-btn";
+    gDot.dataset.gid = gid_val || nGid();
+    attachDotEvents(gDot);
+    dotRow.appendChild(gDot);
+
+    member.appendChild(shape);
+    member.appendChild(dotRow);
+    member.style.left = left || Math.random()*(window.innerWidth-100)+"px";
+    member.style.top  = top  || Math.random()*(window.innerHeight-130)+"px";
+    document.body.appendChild(member);
+    return member;
+}
+function addShape(type){
+    const name = prompt("Enter name:"); if(!name) return;
+    document.getElementById("menu").classList.remove("show");
+    _createMember(type, name); persist();
+}
+
+/* ══════════════════════════════════════════════════════════
+   DELETE
+══════════════════════════════════════════════════════════ */
+function deleteConn(conn){
+    conn.line.remove();
+    connections = connections.filter(c => c !== conn);
+    // also delete any ll bridges that reference this connection
+    connections = connections.filter(c => {
+        if(c.type==='ll' && (c.connA_id===conn.id || c.connB_id===conn.id)){
+            c.line.remove(); return false;
+        }
+        return true;
+    });
+}
+function deleteDot(dot){
+    const id = dot.dataset.did || dot.dataset.gid;
+    connections = connections.filter(c => {
+        if(c.type==='dd' && (c.dotA_id===id || c.dotB_id===id)){ c.line.remove(); return false; }
+        return true;
+    });
+    dot.remove();
+}
+function deleteMember(member){
+    member.querySelectorAll(".green-btn").forEach(g => deleteDot(g));
+    member.remove();
+}
+function toggleBin(){
+    binMode = !binMode;
+    binBtn.classList.toggle("active", binMode);
+    svgEl.classList.toggle("bin-mode", binMode);
+    document.body.classList.toggle("bin-mode", binMode);
+    if(binMode){ cancelPendingDot(); cancelPendingLine(); cancelMove(); placingDot=false; document.body.style.cursor=""; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   MINIMISE
+══════════════════════════════════════════════════════════ */
+function minimizeShapes(){
+    currentShapeSize = Math.max(8, currentShapeSize-5);
+    document.querySelectorAll(".shape").forEach(s => {
+        s.style.width=currentShapeSize+"px"; s.style.height=currentShapeSize+"px";
+        s.style.fontSize=Math.max(4,currentShapeSize/6)+"px";
+    });
+    persist();
+}
+
+/* ══════════════════════════════════════════════════════════
+   PERSISTENCE
+══════════════════════════════════════════════════════════ */
+const STORE_KEY = "familyTree_v4";
+function persist(){
+    try{
+        const members = [];
+        document.querySelectorAll(".member").forEach(m => {
+            const s  = m.querySelector(".shape");
+            const tp = s.classList.contains("circle")?"circle": s.classList.contains("square")?"square":"diamond";
+            const nm = tp==="diamond" ? s.querySelector("span").textContent : s.textContent;
+            const g  = m.querySelector(".green-btn");
+            members.push({ mid:m.dataset.mid, type:tp, name:nm,
+                left:m.style.left, top:m.style.top,
+                size:parseInt(s.style.width)||currentShapeSize,
+                gid: g ? g.dataset.gid : null });
+        });
+        const freeDots=[], junctionDots=[];
+        document.querySelectorAll(".free-dot").forEach(d =>
+            freeDots.push({ did:d.dataset.did, left:d.style.left, top:d.style.top }));
+        document.querySelectorAll(".junction-dot").forEach(d =>
+            junctionDots.push({ did:d.dataset.did, jconn:d.dataset.jconn, jt:d.dataset.jt }));
+        const conns = connections.map(c => {
+            if(c.type==='dd') return { id:c.id, type:'dd', aId:c.dotA_id, bId:c.dotB_id };
+            if(c.type==='ll') return { id:c.id, type:'ll', aId:c.connA_id, tA:c.tA, bId:c.connB_id, tB:c.tB };
+        });
+        localStorage.setItem(STORE_KEY, JSON.stringify({ members, freeDots, junctionDots, conns, currentShapeSize }));
+    } catch(err){ console.warn("persist error",err); }
+}
+
+function loadState(){
+    try{
+        const raw = localStorage.getItem(STORE_KEY); if(!raw) return;
+        const data = JSON.parse(raw);
+        currentShapeSize = data.currentShapeSize || 70;
+
+        // update seeds to avoid ID collisions
+        const allIds = [];
+        (data.members||[]).forEach(m => { _createMember(m.type,m.name,m.left,m.top,m.size,m.mid,m.gid); });
+        (data.freeDots||[]).forEach(d => { createFreeDot(parseFloat(d.left), parseFloat(d.top), d.did); });
+
+        // junction dots: created AFTER their parent conns, so we do two passes
+        // Pass 1: create all dd connections first
+        (data.conns||[]).forEach(c => {
+            if(c.type==='dd'){
+                const a = document.querySelector(`[data-did="${c.aId}"],[data-gid="${c.aId}"]`);
+                const b = document.querySelector(`[data-did="${c.bId}"],[data-gid="${c.bId}"]`);
+                if(a && b) drawDotLine(c.aId, c.bId, c.id);
+            }
+        });
+        // Pass 2: junction dots (need their parent conn to exist)
+        (data.junctionDots||[]).forEach(d => { createJunctionDot(d.jconn, parseFloat(d.jt), d.did); });
+        // Pass 3: ll bridges
+        (data.conns||[]).forEach(c => {
+            if(c.type==='ll') drawLineBridge(c.aId, c.tA, c.bId, c.tB, c.id);
+        });
+    } catch(err){ console.warn("load error",err); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   WIRE BUTTONS
+══════════════════════════════════════════════════════════ */
+function wire(id, fn){
+    const el = document.getElementById(id);
+    el.addEventListener("click",    e=>{ e.stopPropagation(); fn(); });
+    el.addEventListener("touchend", e=>{ e.stopPropagation(); e.preventDefault(); fn(); });
+}
+wire("plusBtn",       ()=>document.getElementById("menu").classList.toggle("show"));
+wire("minusBtn",      minimizeShapes);
+wire("binBtn",        toggleBin);
+wire("saveBtn",       saveImage);
+wire("dotOption",     activateDotPlace);
+wire("circleOption",  ()=>addShape("circle"));
+wire("squareOption",  ()=>addShape("square"));
+wire("diamondOption", ()=>addShape("diamond"));
+
+/* ══════════════════════════════════════════════════════════
+   SAVE IMAGE
+══════════════════════════════════════════════════════════ */
+function saveImage(){
+    document.querySelectorAll(".shape").forEach(s=>s.classList.remove("selected"));
+    cancelMove(); cancelPendingDot(); cancelPendingLine();
+    if(binMode) toggleBin();
+    const overlay = document.getElementById("saving-overlay");
+    const hide = s=>document.querySelectorAll(s).forEach(el=>el.style.visibility="hidden");
+    const show = s=>document.querySelectorAll(s).forEach(el=>el.style.visibility="");
+    hide(".plus-btn,.minus-btn,.save-btn,.bin-btn,.menu,.green-btn");
+    overlay.classList.add("show");
+    setTimeout(()=>{
+        overlay.classList.remove("show");
+        html2canvas(document.body,{backgroundColor:"#ffff00",scale:2,useCORS:true})
+        .then(canvas=>{
+            show(".plus-btn,.minus-btn,.save-btn,.bin-btn,.menu,.green-btn");
+            const a=document.createElement("a"); a.download="family_tree.jpeg";
+            a.href=canvas.toDataURL("image/jpeg",0.95); a.click();
+        }).catch(err=>{ show(".plus-btn,.minus-btn,.save-btn,.bin-btn,.menu,.green-btn"); alert("Save failed."); });
+    },150);
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════════ */
+loadState();
+</script>
+</body>
+</html>
