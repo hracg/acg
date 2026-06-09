@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Laptop Series Explorer</title>
+<title>Laptop Explorer</title>
 
 <style>
 body{
@@ -16,7 +16,7 @@ body{
 /* HEADER */
 header{
     text-align:center;
-    padding:40px 20px;
+    padding:30px;
 }
 header h1{
     font-size:2.5rem;
@@ -25,78 +25,65 @@ header p{
     opacity:0.7;
 }
 
-/* CONTAINER */
+/* CARDS */
 .container{
     width:92%;
-    max-width:1100px;
+    max-width:1000px;
     margin:auto;
-    padding-bottom:40px;
 }
 
-/* CARD */
 .card{
     background:rgba(255,255,255,0.07);
     border:1px solid rgba(255,255,255,0.1);
-    border-radius:18px;
+    border-radius:16px;
     margin:20px 0;
     overflow:hidden;
-    transition:0.3s;
 }
 
-.card:hover{
-    transform:scale(1.01);
-}
-
-/* TOP SECTION */
 .top{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    padding:20px;
+    padding:18px;
     cursor:pointer;
 }
 
 .title{
-    font-size:1.4rem;
+    font-size:1.3rem;
     font-weight:bold;
 }
 
-.badge{
-    padding:5px 10px;
-    background:gold;
-    color:black;
-    border-radius:20px;
-    font-weight:bold;
-}
-
-/* BUTTON */
 .btn{
     background:linear-gradient(90deg,#3b82f6,#06b6d4);
     border:none;
-    padding:8px 15px;
+    padding:8px 12px;
     color:white;
     border-radius:10px;
     cursor:pointer;
-    font-weight:bold;
 }
 
-/* CONTENT (HIDDEN EXPAND) */
+/* EXPAND */
 .content{
     max-height:0;
     overflow:hidden;
-    transition:max-height 0.5s ease;
-    padding:0 20px;
+    transition:0.5s;
+    padding:0 18px;
 }
 
 .content.open{
     max-height:500px;
-    padding:20px;
+    padding:18px;
 }
 
-/* LINKS */
+.info{
+    opacity:0.85;
+    margin-bottom:10px;
+}
+
+/* LINKS INSIDE CARD */
 .links a{
     display:block;
-    margin:10px 0;
+    margin:8px 0;
     color:#60a5fa;
     text-decoration:none;
 }
@@ -105,18 +92,39 @@ header p{
     text-decoration:underline;
 }
 
-/* INFO BOX */
-.info{
-    margin:10px 0;
-    opacity:0.85;
-    line-height:1.5;
+/* BOTTOM LINK SECTION */
+.bottom-links{
+    margin:40px auto;
+    padding:20px;
+    width:92%;
+    max-width:1000px;
+    background:rgba(255,255,255,0.06);
+    border-radius:15px;
 }
 
-/* FOOTER */
-footer{
+.bottom-links h2{
     text-align:center;
-    padding:30px;
-    opacity:0.6;
+    margin-bottom:15px;
+}
+
+.link-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:10px;
+}
+
+.link-grid a{
+    background:rgba(255,255,255,0.1);
+    padding:10px;
+    border-radius:10px;
+    text-align:center;
+    text-decoration:none;
+    color:white;
+    transition:0.3s;
+}
+
+.link-grid a:hover{
+    background:rgba(59,130,246,0.6);
 }
 </style>
 </head>
@@ -124,8 +132,8 @@ footer{
 <body>
 
 <header>
-    <h1>💻 Laptop Series Explorer</h1>
-    <p>Click Learn More to explore specifications, usage & links</p>
+    <h1>💻 Laptop Explorer</h1>
+    <p>Interactive comparison + YouTube learning links</p>
 </header>
 
 <div class="container">
@@ -136,17 +144,14 @@ footer{
         <div class="title">🥇 ASUS VivoBook</div>
         <button class="btn">Learn More</button>
     </div>
-
     <div class="content">
         <div class="info">
-            <b>Overview:</b> Thin & light laptop ideal for students and coding with balanced performance.
+            Best for students, coding, and daily use.
         </div>
-
         <div class="links">
-            <a href="https://www.google.com/search?q=asus+vivobook+specifications" target="_blank">📌 Specifications</a>
-            <a href="https://www.google.com/search?q=who+should+buy+asus+vivobook" target="_blank">👤 Who Should Buy</a>
-            <a href="https://www.asus.com/laptops/for-home/vivobook/" target="_blank">🛒 Buy Online</a>
-            <a href="https://youtu.be/K8klONFrIjM?si=GLVZQ7aMa75K-Zxb" target="_blank">▶ YouTube Review</a>
+            <a href="https://www.asus.com/laptops/for-home/vivobook/" target="_blank">Specifications</a>
+            <a href="https://www.google.com/search?q=asus+vivobook+who+should+buy" target="_blank">Who Should Buy</a>
+            <a href="https://www.asus.com/in/store/" target="_blank">Buy Online</a>
         </div>
     </div>
 </div>
@@ -157,17 +162,14 @@ footer{
         <div class="title">🥈 Lenovo IdeaPad</div>
         <button class="btn">Learn More</button>
     </div>
-
     <div class="content">
         <div class="info">
-            <b>Overview:</b> Reliable everyday laptop for study, office work and programming.
+            Reliable laptop for study, office and programming.
         </div>
-
         <div class="links">
-            <a href="https://www.google.com/search?q=lenovo+ideapad+specifications" target="_blank">📌 Specifications</a>
-            <a href="https://www.google.com/search?q=lenovo+ideapad+who+should+buy" target="_blank">👤 Who Should Buy</a>
-            <a href="https://www.lenovo.com/in/en/" target="_blank">🛒 Buy Online</a>
-            <a href="https://youtu.be/K8klONFrIjM?si=GLVZQ7aMa75K-Zxb" target="_blank">▶ YouTube Review</a>
+            <a href="https://www.lenovo.com/in/en/laptops/ideapad/" target="_blank">Specifications</a>
+            <a href="https://www.google.com/search?q=lenovo+ideapad+who+should+buy" target="_blank">Who Should Buy</a>
+            <a href="https://www.lenovo.com/in/en/" target="_blank">Buy Online</a>
         </div>
     </div>
 </div>
@@ -178,26 +180,31 @@ footer{
         <div class="title">🥉 HP OmniBook</div>
         <button class="btn">Learn More</button>
     </div>
-
     <div class="content">
         <div class="info">
-            <b>Overview:</b> Premium modern laptop with AI features, strong battery, and performance focus.
+            Premium AI-ready laptop with strong performance.
         </div>
-
         <div class="links">
-            <a href="https://www.google.com/search?q=hp+omnibook+specifications" target="_blank">📌 Specifications</a>
-            <a href="https://www.google.com/search?q=hp+omnibook+who+should+buy" target="_blank">👤 Who Should Buy</a>
-            <a href="https://www.hp.com/in-en/shop/" target="_blank">🛒 Buy Online</a>
-            <a href="https://youtu.be/wbyCkWV8fvw?si=bQzxXQK3AH42b9FI" target="_blank">▶ YouTube Review</a>
+            <a href="https://www.hp.com/in-en/laptops-and-2-in-1s/omnibook.html" target="_blank">Specifications</a>
+            <a href="https://www.google.com/search?q=hp+omnibook+who+should+buy" target="_blank">Who Should Buy</a>
+            <a href="https://www.hp.com/in-en/shop/" target="_blank">Buy Online</a>
         </div>
     </div>
 </div>
 
 </div>
 
-<footer>
-    Interactive Laptop Explorer • Single Page Dynamic Website
-</footer>
+<!-- 🔥 YOUR REQUIRED LINK SECTION -->
+<div class="bottom-links">
+    <h2>🎥 YouTube Video Links</h2>
+
+    <div class="link-grid">
+        <a href="https://youtu.be/K8klONFrIjM?si=GLVZQ7aMa75K-Zxb" target="_blank">LINK 1</a>
+        <a href="https://youtu.be/K8klONFrIjM?si=GLVZQ7aMa75K-Zxb" target="_blank">LINK 2</a>
+        <a href="https://youtu.be/wbyCkWV8fvw?si=bQzxXQK3AH42b9FI" target="_blank">LINK 3</a>
+        <a href="https://youtu.be/Lcu9bSVhuVY?si=gjPdrf0iv4y7utKp" target="_blank">LINK 4</a>
+    </div>
+</div>
 
 <script>
 function toggle(el){
