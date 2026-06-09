@@ -1,8 +1,199 @@
-asus vivo book 
-lenovo ideapad
-hp omnibook
-1st preffer links:   https://youtu.be/K8klONFrIjM?si=GLVZQ7aMa75K-Zxb
-2nd preffer links:   1st preffer links:   https://youtu.be/K8klONFrIjM?si=GLVZQ7aMa75K-Zxb
-3rd preffer links:   https://youtu.be/wbyCkWV8fvw?si=bQzxXQK3AH42b9FI
-4th preffer links:   https://youtu.be/Lcu9bSVhuVY?si=gjPdrf0iv4y7utKp
-  
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laptop Recommendations</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+body{
+    min-height:100vh;
+    background:linear-gradient(135deg,#0f172a,#1e293b,#111827);
+    color:white;
+    overflow-x:hidden;
+}
+
+header{
+    text-align:center;
+    padding:40px 20px;
+}
+
+header h1{
+    font-size:3rem;
+    margin-bottom:10px;
+}
+
+header p{
+    opacity:.8;
+    font-size:1.1rem;
+}
+
+.container{
+    width:95%;
+    max-width:1200px;
+    margin:auto;
+    padding-bottom:50px;
+}
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:25px;
+}
+
+.card{
+    background:rgba(255,255,255,0.08);
+    backdrop-filter:blur(12px);
+    border-radius:20px;
+    padding:25px;
+    transition:.35s;
+    cursor:pointer;
+    border:1px solid rgba(255,255,255,0.1);
+    position:relative;
+    overflow:hidden;
+}
+
+.card:hover{
+    transform:translateY(-10px) scale(1.03);
+    box-shadow:0 15px 35px rgba(0,0,0,.4);
+}
+
+.rank{
+    position:absolute;
+    top:15px;
+    right:15px;
+    background:gold;
+    color:black;
+    font-weight:bold;
+    padding:6px 12px;
+    border-radius:30px;
+}
+
+.icon{
+    font-size:4rem;
+    text-align:center;
+    margin:20px 0;
+}
+
+.card h2{
+    text-align:center;
+    margin-bottom:10px;
+}
+
+.card p{
+    text-align:center;
+    opacity:.8;
+    margin-bottom:20px;
+}
+
+.btn{
+    display:block;
+    text-align:center;
+    text-decoration:none;
+    background:linear-gradient(90deg,#3b82f6,#06b6d4);
+    color:white;
+    padding:12px;
+    border-radius:12px;
+    font-weight:bold;
+    transition:.3s;
+}
+
+.btn:hover{
+    transform:scale(1.05);
+}
+
+footer{
+    text-align:center;
+    padding:30px;
+    opacity:.7;
+}
+
+.glow{
+    position:fixed;
+    width:300px;
+    height:300px;
+    border-radius:50%;
+    background:rgba(59,130,246,.15);
+    filter:blur(100px);
+    top:0;
+    left:0;
+    pointer-events:none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="glow" id="glow"></div>
+
+<header>
+    <h1>💻 Laptop Recommendations</h1>
+    <p>Click any card to watch the recommended YouTube review</p>
+</header>
+
+<div class="container">
+
+    <div class="cards">
+
+        <div class="card" onclick="openVideo('https://youtu.be/K8klONFrIjM?si=GLVZQ7aMa75K-Zxb')">
+            <div class="rank">#1</div>
+            <div class="icon">🏆</div>
+            <h2>ASUS VivoBook</h2>
+            <p>Top recommended choice with excellent value and performance.</p>
+            <span class="btn">Watch Review ▶</span>
+        </div>
+
+        <div class="card" onclick="openVideo('https://youtu.be/K8klONFrIjM?si=GLVZQ7aMa75K-Zxb')">
+            <div class="rank">#2</div>
+            <div class="icon">🥈</div>
+            <h2>Lenovo IdeaPad</h2>
+            <p>Reliable performance, solid build quality and productivity.</p>
+            <span class="btn">Watch Review ▶</span>
+        </div>
+
+        <div class="card" onclick="openVideo('https://youtu.be/wbyCkWV8fvw?si=bQzxXQK3AH42b9FI')">
+            <div class="rank">#3</div>
+            <div class="icon">🥉</div>
+            <h2>HP OmniBook</h2>
+            <p>Premium design with modern features and portability.</p>
+            <span class="btn">Watch Review ▶</span>
+        </div>
+
+        <div class="card" onclick="openVideo('https://youtu.be/Lcu9bSVhuVY?si=gjPdrf0iv4y7utKp')">
+            <div class="rank">#4</div>
+            <div class="icon">⭐</div>
+            <h2>Bonus Recommendation</h2>
+            <p>Additional laptop review worth checking out.</p>
+            <span class="btn">Watch Review ▶</span>
+        </div>
+
+    </div>
+
+</div>
+
+<footer>
+    Made with ❤️ | Interactive Laptop Recommendation Portal
+</footer>
+
+<script>
+function openVideo(url){
+    window.open(url,"_blank");
+}
+
+const glow = document.getElementById("glow");
+
+document.addEventListener("mousemove",(e)=>{
+    glow.style.left=(e.clientX-150)+"px";
+    glow.style.top=(e.clientY-150)+"px";
+});
+</script>
+
+</body>
+</html>
