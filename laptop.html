@@ -1,30 +1,210 @@
-<div class="laptop-card">
-  <h2>🥇 ASUS VivoBook</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laptop Series Explorer</title>
 
-  <button>Learn More</button>
+<style>
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:linear-gradient(135deg,#0f172a,#1e293b,#0b1220);
+    color:white;
+}
 
-  <div class="details">
-      <h3>Specifications</h3>
-      <ul>
-          <li>Intel Core / AMD Ryzen</li>
-          <li>Up to 16GB RAM</li>
-          <li>SSD Storage</li>
-          <li>OLED Display Options</li>
-      </ul>
+/* HEADER */
+header{
+    text-align:center;
+    padding:40px 20px;
+}
+header h1{
+    font-size:2.5rem;
+}
+header p{
+    opacity:0.7;
+}
 
-      <h3>Who Should Buy?</h3>
-      <p>Students, programmers, content consumers.</p>
+/* CONTAINER */
+.container{
+    width:92%;
+    max-width:1100px;
+    margin:auto;
+    padding-bottom:40px;
+}
 
-      <a href="https://youtu.be/K8klONFrIjM?si=GLVZQ7aMa75K-Zxb" target="_blank">
-         YouTube Review
-      </a>
+/* CARD */
+.card{
+    background:rgba(255,255,255,0.07);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:18px;
+    margin:20px 0;
+    overflow:hidden;
+    transition:0.3s;
+}
 
-      <a href="https://www.asus.com/laptops/for-home/vivobook/" target="_blank">
-         Official Website
-      </a>
+.card:hover{
+    transform:scale(1.01);
+}
 
-      <a href="https://in.store.asus.com/" target="_blank">
-         Buy Online
-      </a>
-  </div>
+/* TOP SECTION */
+.top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:20px;
+    cursor:pointer;
+}
+
+.title{
+    font-size:1.4rem;
+    font-weight:bold;
+}
+
+.badge{
+    padding:5px 10px;
+    background:gold;
+    color:black;
+    border-radius:20px;
+    font-weight:bold;
+}
+
+/* BUTTON */
+.btn{
+    background:linear-gradient(90deg,#3b82f6,#06b6d4);
+    border:none;
+    padding:8px 15px;
+    color:white;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+/* CONTENT (HIDDEN EXPAND) */
+.content{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height 0.5s ease;
+    padding:0 20px;
+}
+
+.content.open{
+    max-height:500px;
+    padding:20px;
+}
+
+/* LINKS */
+.links a{
+    display:block;
+    margin:10px 0;
+    color:#60a5fa;
+    text-decoration:none;
+}
+
+.links a:hover{
+    text-decoration:underline;
+}
+
+/* INFO BOX */
+.info{
+    margin:10px 0;
+    opacity:0.85;
+    line-height:1.5;
+}
+
+/* FOOTER */
+footer{
+    text-align:center;
+    padding:30px;
+    opacity:0.6;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>💻 Laptop Series Explorer</h1>
+    <p>Click Learn More to explore specifications, usage & links</p>
+</header>
+
+<div class="container">
+
+<!-- ASUS -->
+<div class="card">
+    <div class="top" onclick="toggle(this)">
+        <div class="title">🥇 ASUS VivoBook</div>
+        <button class="btn">Learn More</button>
+    </div>
+
+    <div class="content">
+        <div class="info">
+            <b>Overview:</b> Thin & light laptop ideal for students and coding with balanced performance.
+        </div>
+
+        <div class="links">
+            <a href="https://www.google.com/search?q=asus+vivobook+specifications" target="_blank">📌 Specifications</a>
+            <a href="https://www.google.com/search?q=who+should+buy+asus+vivobook" target="_blank">👤 Who Should Buy</a>
+            <a href="https://www.asus.com/laptops/for-home/vivobook/" target="_blank">🛒 Buy Online</a>
+            <a href="https://youtu.be/K8klONFrIjM?si=GLVZQ7aMa75K-Zxb" target="_blank">▶ YouTube Review</a>
+        </div>
+    </div>
 </div>
+
+<!-- LENOVO -->
+<div class="card">
+    <div class="top" onclick="toggle(this)">
+        <div class="title">🥈 Lenovo IdeaPad</div>
+        <button class="btn">Learn More</button>
+    </div>
+
+    <div class="content">
+        <div class="info">
+            <b>Overview:</b> Reliable everyday laptop for study, office work and programming.
+        </div>
+
+        <div class="links">
+            <a href="https://www.google.com/search?q=lenovo+ideapad+specifications" target="_blank">📌 Specifications</a>
+            <a href="https://www.google.com/search?q=lenovo+ideapad+who+should+buy" target="_blank">👤 Who Should Buy</a>
+            <a href="https://www.lenovo.com/in/en/" target="_blank">🛒 Buy Online</a>
+            <a href="https://youtu.be/K8klONFrIjM?si=GLVZQ7aMa75K-Zxb" target="_blank">▶ YouTube Review</a>
+        </div>
+    </div>
+</div>
+
+<!-- HP -->
+<div class="card">
+    <div class="top" onclick="toggle(this)">
+        <div class="title">🥉 HP OmniBook</div>
+        <button class="btn">Learn More</button>
+    </div>
+
+    <div class="content">
+        <div class="info">
+            <b>Overview:</b> Premium modern laptop with AI features, strong battery, and performance focus.
+        </div>
+
+        <div class="links">
+            <a href="https://www.google.com/search?q=hp+omnibook+specifications" target="_blank">📌 Specifications</a>
+            <a href="https://www.google.com/search?q=hp+omnibook+who+should+buy" target="_blank">👤 Who Should Buy</a>
+            <a href="https://www.hp.com/in-en/shop/" target="_blank">🛒 Buy Online</a>
+            <a href="https://youtu.be/wbyCkWV8fvw?si=bQzxXQK3AH42b9FI" target="_blank">▶ YouTube Review</a>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<footer>
+    Interactive Laptop Explorer • Single Page Dynamic Website
+</footer>
+
+<script>
+function toggle(el){
+    let content = el.nextElementSibling;
+    content.classList.toggle("open");
+}
+</script>
+
+</body>
+</html>
