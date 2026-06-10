@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Family Tree Builder</title>
+<style>
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+/* ── canvas wrapper — panned/zoomed via transform ── */
+html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#888; }
+
+#viewport {
+    position:fixed; top:0; left:0;
+    width:100vw; height:100vh;
+    overflow:hidden;
+    touch-action:none;
+}
+
+#canvas {
+    position:absolute;
+    top:0; left:0;
+    width:3000px; height:3000px;   /* large scrollable canvas */
+    background:yellow;
+    transform-origin:0 0;
+    user-select:none; -webkit-user-select:none;
+    font-family:Arial,sans-serif;
+}
+
+/* SVG overlay inside canvas */
+#line-canvas {
+    position:absolute; top:0; left:0;
+    width:100%; height:100%;
+    pointer-events:none;
+    z-index:0;
+}
+#line-canvas.drawing { pointer-events:none; }
+
+/* ── member shapes ── */
+.member {
+    position:absolute;
+    display:flex; flex-direction:column; align-items:center;
+    z-index:1; cursor:pointer;
+    touch-action:none;
+}
+.shape {
+    border:2px solid black; background:white;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center; font-weight:bold;
+    padding:2px; overflow:hidden;
+}
+.circle  { border-radius:50%; }
+.square  { border-radius:0; }
+.diamond { transform:rotate(45deg); }
+.diamond span { transform:rotate(-45deg); display:block; }
+.selected { outline:3px solid red; }
+
+/* ── fixed UI bar ── */
+#ui {
+    position:fixed; bottom:16px; left:50%;
+    transform:translateX(-50%);
+    display:flex; align-items:center; gap:10px;
+    z-index:9999;
+    touch-action:none;
+}
+
+.ui-btn {
+    width:56px; height:56px;
+    border:none; border-radius:50%;
+    background:blue; color:white;
+    font-size:26px; font-weight:bold;
+    cursor:pointer; display:flex;
+    align-items:center; justify-content:center;
+    box-shadow:0 3px 8px rgba(0,0,0,0.35);
+    flex-shrink:0;
+    transition:background 0.2s, box-shadow 0.2s;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+}
+.ui-btn:active { transform:scale(0.93); }
+.ui-btn.active { background:red; box-shadow:0 0 0 4px orange; }
+
+#saveBtn {
+    width:110px; border-radius:28px;
+    font-size:16px; gap:6px;
+    background:green;
+}
+
+/* ── floating menu above + button ── */
+#menu {
+    position:fixed;
+    bottom:84px;
+    /* will be positioned by JS relative to plusBtn */
+    right:16px;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    z-index:9998;
+}
+.menu-item {
+    width:48px; height:48px;
+    background:white; border:2px solid #333; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:20px;
+    opacity:0; transform:translateY(20px) scale(0.8);
+    transition:opacity 0.22s, transform 0.22s;
+    pointer-events:none;
+    box-shadow:0 2px 6px rgba(0,0,0,0.25);
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+}
+.menu-item.line-item {
+    font-size:13px; font-weight:bold; letter-spacing:0;
+    color:#000;
+}
+#menu.open .menu-item {
+    opacity:1; transform:translateY(0) scale(1);
+    pointer-events:auto;
+}
+/* stagger */
+#menu.open .menu-item:nth-child(1){ transition-delay:0.00s; }
+#menu.open .menu-item:nth-child(2){ transition-delay:0.04s; }
+#menu.open .menu-item:nth-child(3){ transition-delay:0.08s; }
+#menu.open .menu-item:nth-child(4){ transition-delay:0.12s; }
+
+/* highlight when line-draw mode active */
+.menu-item.line-item.active-mode {
+    background:#222; color:white;
+}
+
+/* ── saving overlay ── */
+#saving-overlay {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.4); z-index:99999;
+    align-items:center; justify-content:center;
+    color:white; font-size:22px; font-weight:bold;
+    font-family:Arial,sans-serif;
+}
+#saving-overlay.show { display:flex; }
+
+/* ── drawing cursor ── */
+body.drawing-mode { cursor:crosshair; }
+</style>
+</head>
+<body>
+
+<div id="viewport">
+    <div id="canvas">
+        <svg id="line-canvas"></svg>
+    </div>
+</div>
+
+<!-- Fixed UI -->
+<div id="ui">
+    <button class="ui-btn" id="binBtn"  title="Delete">🗑</button>
+    <button class="ui-btn" id="minBtn"  title="Shrink shapes">−</button>
+    <button class="ui-btn" id="maxBtn"  title="Grow shapes">M</button>
+    <button class="ui-btn" id="saveBtn" title="Save image">💾 Save</button>
+    <button class="ui-btn" id="plusBtn" title="Add">＋</button>
+</div>
+
+<div id="menu">
+    <!-- top = line draw, then shapes -->
+    <div class="menu-item line-item" id="lineItem" title="Draw line">╱ Line</div>
+    <div class="menu-item" id="ciItem"  title="Add circle">●</div>
+    <div class="menu-item" id="sqItem"  title="Add square">■</div>
+    <div class="menu-item" id="dmItem"  title="Add diamond">◆</div>
+</div>
+
+<div id="saving-overlay">Saving image…</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════
+   CORE REFERENCES
+═══════════════════════════════════════════════════════ */
+const viewport  = document.getElementById("viewport");
+const canvas    = document.getElementById("canvas");
+const svgEl     = document.getElementById("line-canvas");
+const menu      = document.getElementById("menu");
+const plusBtn   = document.getElementById("plusBtn");
+const binBtn    = document.getElementById("binBtn");
+const minBtn    = document.getElementById("minBtn");
+const maxBtn    = document.getElementById("maxBtn");
+const saveBtn   = document.getElementById("saveBtn");
+const lineItem  = document.getElementById("lineItem");
+const ciItem    = document.getElementById("ciItem");
+const sqItem    = document.getElementById("sqItem");
+const dmItem    = document.getElementById("dmItem");
+
+/* ═══════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════ */
+let shapeSize   = 70;
+let binMode     = false;
+let drawLineMode= false;   // user selected line tool
+let lineStart   = null;    // {x,y} canvas coords of first tap
+let previewLine = null;    // SVG line shown while drawing
+let selectedMbr = null;
+let menuOpen    = false;
+
+// pan/zoom
+let panX=0, panY=0, zoom=1;
+let isPanning=false, panStart={x:0,y:0}, panOrigin={x:0,y:0};
+
+// stored lines: [{id, x1,y1,x2,y2, svgLine}]
+let lines = [];
+// stored members: tracked via DOM, saved to localStorage
+let _seed = Date.now();
+const uid = p => p + (_seed++).toString(36);
+
+/* ═══════════════════════════════════════════════════════
+   PAN / ZOOM
+═══════════════════════════════════════════════════════ */
+function applyTransform(){
+    canvas.style.transform = `translate(${panX}px,${panY}px) scale(${zoom})`;
+}
+
+// Convert viewport pixel → canvas coordinate
+function toCanvas(vx, vy){
+    return { x:(vx - panX)/zoom, y:(vy - panY)/zoom };
+}
+
+/* ── pinch-zoom & two-finger pan ── */
+let touches = {};
+let lastPinchDist = null;
+
+viewport.addEventListener("touchstart", e=>{
+    Array.from(e.changedTouches).forEach(t=>{ touches[t.identifier]={x:t.clientX,y:t.clientY}; });
+    if(Object.keys(touches).length===2){ lastPinchDist=getPinchDist(); }
+    else if(Object.keys(touches).length===1 && !drawLineMode && !binMode && !selectedMbr){
+        const t=e.changedTouches[0];
+        isPanning=true; panStart={x:t.clientX,y:t.clientY}; panOrigin={x:panX,y:panY};
+    }
+},{passive:false});
+
+viewport.addEventListener("touchmove", e=>{
+    e.preventDefault();
+    Array.from(e.changedTouches).forEach(t=>{ touches[t.identifier]={x:t.clientX,y:t.clientY}; });
+    const keys=Object.keys(touches);
+    if(keys.length===2){
+        // pinch zoom
+        const d=getPinchDist();
+        if(lastPinchDist){
+            const mid=getPinchMid();
+            const ratio=d/lastPinchDist;
+            const newZoom=Math.min(3,Math.max(0.3,zoom*ratio));
+            panX = mid.x - (mid.x - panX)*(newZoom/zoom);
+            panY = mid.y - (mid.y - panY)*(newZoom/zoom);
+            zoom=newZoom;
+            applyTransform();
+        }
+        lastPinchDist=d;
+    } else if(keys.length===1 && isPanning){
+        const t=e.changedTouches[0];
+        panX=panOrigin.x+(t.clientX-panStart.x);
+        panY=panOrigin.y+(t.clientY-panStart.y);
+        applyTransform();
+    }
+},{passive:false});
+
+viewport.addEventListener("touchend", e=>{
+    Array.from(e.changedTouches).forEach(t=>{ delete touches[t.identifier]; });
+    if(Object.keys(touches).length < 2) lastPinchDist=null;
+    if(Object.keys(touches).length === 0) isPanning=false;
+},{passive:false});
+
+function getPinchDist(){
+    const ids=Object.keys(touches); if(ids.length<2) return 0;
+    const a=touches[ids[0]], b=touches[ids[1]];
+    return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);
+}
+function getPinchMid(){
+    const ids=Object.keys(touches);
+    const a=touches[ids[0]], b=touches[ids[1]];
+    return{x:(a.x+b.x)/2, y:(a.y+b.y)/2};
+}
+
+// Mouse wheel zoom
+viewport.addEventListener("wheel", e=>{
+    e.preventDefault();
+    const ratio = e.deltaY<0 ? 1.1 : 0.91;
+    const newZoom=Math.min(3,Math.max(0.3,zoom*ratio));
+    panX = e.clientX - (e.clientX - panX)*(newZoom/zoom);
+    panY = e.clientY - (e.clientY - panY)*(newZoom/zoom);
+    zoom=newZoom; applyTransform();
+},{passive:false});
+
+// Mouse pan (middle button or when nothing else active)
+viewport.addEventListener("mousedown", e=>{
+    if(e.button===1){ e.preventDefault(); isPanning=true; panStart={x:e.clientX,y:e.clientY}; panOrigin={x:panX,y:panY}; }
+},{passive:false});
+document.addEventListener("mousemove", e=>{
+    if(!isPanning) return;
+    panX=panOrigin.x+(e.clientX-panStart.x);
+    panY=panOrigin.y+(e.clientY-panStart.y);
+    applyTransform();
+});
+document.addEventListener("mouseup", e=>{ if(e.button===1) isPanning=false; });
+
+/* ═══════════════════════════════════════════════════════
+   MENU TOGGLE
+═══════════════════════════════════════════════════════ */
+function toggleMenu(){
+    menuOpen=!menuOpen;
+    menu.classList.toggle("open",menuOpen);
+}
+function closeMenu(){ menuOpen=false; menu.classList.remove("open"); }
+
+/* ═══════════════════════════════════════════════════════
+   LINE DRAW MODE
+═══════════════════════════════════════════════════════ */
+function activateLineMode(){
+    closeMenu();
+    drawLineMode=true;
+    document.body.classList.add("drawing-mode");
+    lineItem.classList.add("active-mode");
+    cancelMoveMode();
+}
+function deactivateLineMode(){
+    drawLineMode=false;
+    document.body.classList.remove("drawing-mode");
+    lineItem.classList.remove("active-mode");
+    lineStart=null;
+    if(previewLine){ previewLine.remove(); previewLine=null; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   CANVAS CLICK — draw line start/end, move shape
+═══════════════════════════════════════════════════════ */
+canvas.addEventListener("click", e=>{
+    if(e.target.closest(".member")) return;  // handled by shape click
+    const pos = toCanvas(e.clientX, e.clientY);
+
+    if(binMode) return;  // bin handles via member click
+
+    if(drawLineMode){
+        if(!lineStart){
+            // first click → set start, show preview
+            lineStart={x:pos.x, y:pos.y};
+            previewLine=makeSvgLine(pos.x,pos.y,pos.x,pos.y,"#555",true);
+        } else {
+            // second click → finalise line
+            const id=uid("l");
+            const svgL=makeSvgLine(lineStart.x,lineStart.y,pos.x,pos.y,"black",false,id);
+            lines.push({id,x1:lineStart.x,y1:lineStart.y,x2:pos.x,y2:pos.y,svgLine:svgL});
+            if(previewLine){previewLine.remove();previewLine=null;}
+            lineStart=null;
+            deactivateLineMode();
+            persist();
+        }
+        return;
+    }
+
+    if(selectedMbr){
+        selectedMbr.style.left=pos.x+"px"; selectedMbr.style.top=pos.y+"px";
+        selectedMbr.querySelector(".shape").classList.remove("selected");
+        selectedMbr=null;
+        persist();
+    }
+});
+
+// mousemove: update preview line while in draw mode
+canvas.addEventListener("mousemove", e=>{
+    if(!drawLineMode||!lineStart||!previewLine) return;
+    const pos=toCanvas(e.clientX,e.clientY);
+    previewLine.setAttribute("x2",pos.x); previewLine.setAttribute("y2",pos.y);
+});
+canvas.addEventListener("touchmove", e=>{
+    if(!drawLineMode||!lineStart||!previewLine) return;
+    const t=e.changedTouches[0];
+    const pos=toCanvas(t.clientX,t.clientY);
+    previewLine.setAttribute("x2",pos.x); previewLine.setAttribute("y2",pos.y);
+},{passive:true});
+
+// touch tap on canvas (for line draw on mobile)
+canvas.addEventListener("touchend", e=>{
+    if(!drawLineMode) return;
+    e.preventDefault();
+    const t=e.changedTouches[0];
+    const pos=toCanvas(t.clientX,t.clientY);
+    if(!lineStart){
+        lineStart={x:pos.x,y:pos.y};
+        previewLine=makeSvgLine(pos.x,pos.y,pos.x,pos.y,"#555",true);
+    } else {
+        const id=uid("l");
+        const svgL=makeSvgLine(lineStart.x,lineStart.y,pos.x,pos.y,"black",false,id);
+        lines.push({id,x1:lineStart.x,y1:lineStart.y,x2:pos.x,y2:pos.y,svgLine:svgL});
+        if(previewLine){previewLine.remove();previewLine=null;}
+        lineStart=null;
+        deactivateLineMode();
+        persist();
+    }
+},{passive:false});
+
+function makeSvgLine(x1,y1,x2,y2,color,dashed,id){
+    const l=document.createElementNS("http://www.w3.org/2000/svg","line");
+    l.setAttribute("x1",x1); l.setAttribute("y1",y1);
+    l.setAttribute("x2",x2); l.setAttribute("y2",y2);
+    l.setAttribute("stroke",color);
+    l.setAttribute("stroke-width","2.5");
+    l.setAttribute("stroke-linecap","round");
+    if(dashed) l.setAttribute("stroke-dasharray","8,5");
+    if(id) l.dataset.lid=id;
+    svgEl.appendChild(l); return l;
+}
+
+/* ═══════════════════════════════════════════════════════
+   BIN MODE
+═══════════════════════════════════════════════════════ */
+function toggleBin(){
+    binMode=!binMode;
+    binBtn.classList.toggle("active",binMode);
+    if(binMode){ deactivateLineMode(); cancelMoveMode(); closeMenu(); }
+}
+
+function tryDeleteAtPoint(cx,cy){
+    // check lines (within 14px in canvas coords)
+    const THRESH=14/zoom;
+    for(let i=lines.length-1;i>=0;i--){
+        const l=lines[i];
+        const dx=l.x2-l.x1,dy=l.y2-l.y1,len2=dx*dx+dy*dy;
+        let dist;
+        if(len2===0){ dist=Math.sqrt((cx-l.x1)**2+(cy-l.y1)**2); }
+        else{
+            const t=Math.max(0,Math.min(1,((cx-l.x1)*dx+(cy-l.y1)*dy)/len2));
+            const nx=l.x1+t*dx, ny=l.y1+t*dy;
+            dist=Math.sqrt((cx-nx)**2+(cy-ny)**2);
+        }
+        if(dist<=THRESH){ l.svgLine.remove(); lines.splice(i,1); persist(); return; }
+    }
+}
+
+// bin click on line (via canvas)
+canvas.addEventListener("click", e=>{
+    if(!binMode) return;
+    if(e.target.closest(".member")){ return; } // member click handled separately
+    const pos=toCanvas(e.clientX,e.clientY);
+    tryDeleteAtPoint(pos.x,pos.y);
+});
+canvas.addEventListener("touchend", e=>{
+    if(!binMode) return;
+    const t=e.changedTouches[0];
+    const pos=toCanvas(t.clientX,t.clientY);
+    tryDeleteAtPoint(pos.x,pos.y);
+},{passive:true});
+
+/* ═══════════════════════════════════════════════════════
+   SHAPES
+═══════════════════════════════════════════════════════ */
+function cancelMoveMode(){
+    if(selectedMbr){ selectedMbr.querySelector(".shape").classList.remove("selected"); selectedMbr=null; }
+}
+
+function addShape(type){
+    const name=prompt("Enter name:"); if(!name) return;
+    closeMenu();
+    const cx=(-panX/zoom)+(window.innerWidth/zoom/2);
+    const cy=(-panY/zoom)+(window.innerHeight/zoom/2);
+    _mkMember(type,name,cx,cy,shapeSize,uid("m"));
+    persist();
+}
+
+function _mkMember(type,name,cx,cy,size,id){
+    size=size||shapeSize;
+    const mbr=document.createElement("div");
+    mbr.className="member"; mbr.dataset.mid=id||uid("m");
+    // position is centre of canvas coord
+    mbr.style.left=cx+"px"; mbr.style.top=cy+"px";
+    mbr.style.transform="translate(-50%,-50%)";
+
+    const sh=document.createElement("div");
+    sh.className="shape "+type;
+    sh.style.width=size+"px"; sh.style.height=size+"px";
+    sh.style.fontSize=Math.max(4,size/6)+"px";
+    sh.innerHTML=type==="diamond"?"<span>"+name+"</span>":name;
+
+    const onTap=e=>{
+        e.stopPropagation();
+        if(binMode){ mbr.remove(); persist(); return; }
+        if(drawLineMode) return;
+        if(selectedMbr===mbr){ cancelMoveMode(); return; }
+        cancelMoveMode();
+        sh.classList.add("selected"); selectedMbr=mbr;
+    };
+    mbr.addEventListener("click",   onTap);
+    mbr.addEventListener("touchend",e=>{ e.preventDefault(); onTap(e); },{passive:false});
+
+    mbr.appendChild(sh);
+    canvas.appendChild(mbr);
+    return mbr;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SHAPE SIZE
+═══════════════════════════════════════════════════════ */
+function changeSize(delta){
+    shapeSize=Math.max(8,shapeSize+delta);
+    document.querySelectorAll(".shape").forEach(s=>{
+        s.style.width=shapeSize+"px"; s.style.height=shapeSize+"px";
+        s.style.fontSize=Math.max(4,shapeSize/6)+"px";
+    });
+    persist();
+}
+
+/* ═══════════════════════════════════════════════════════
+   PERSISTENCE
+═══════════════════════════════════════════════════════ */
+const SKEY="ft_v6";
+function persist(){
+    try{
+        const members=[];
+        document.querySelectorAll(".member").forEach(m=>{
+            const s=m.querySelector(".shape");
+            const tp=s.classList.contains("circle")?"circle":s.classList.contains("square")?"square":"diamond";
+            const nm=tp==="diamond"?s.querySelector("span").textContent:s.textContent;
+            members.push({mid:m.dataset.mid,type:tp,name:nm,
+                left:m.style.left,top:m.style.top,size:parseInt(s.style.width)||shapeSize});
+        });
+        const savedLines=lines.map(l=>({id:l.id,x1:l.x1,y1:l.y1,x2:l.x2,y2:l.y2}));
+        localStorage.setItem(SKEY,JSON.stringify({members,lines:savedLines,shapeSize,panX,panY,zoom}));
+    }catch(e){console.warn("persist",e);}
+}
+
+function loadState(){
+    try{
+        const raw=localStorage.getItem(SKEY); if(!raw) return;
+        const d=JSON.parse(raw);
+        shapeSize=d.shapeSize||70;
+        panX=d.panX||0; panY=d.panY||0; zoom=d.zoom||1;
+        applyTransform();
+        (d.members||[]).forEach(m=>{
+            _mkMember(m.type,m.name,parseFloat(m.left),parseFloat(m.top),m.size,m.mid);
+        });
+        (d.lines||[]).forEach(l=>{
+            const svgL=makeSvgLine(l.x1,l.y1,l.x2,l.y2,"black",false,l.id);
+            lines.push({id:l.id,x1:l.x1,y1:l.y1,x2:l.x2,y2:l.y2,svgLine:svgL});
+        });
+    }catch(e){console.warn("load",e);}
+}
+
+/* ═══════════════════════════════════════════════════════
+   SAVE IMAGE
+═══════════════════════════════════════════════════════ */
+function saveImg(){
+    cancelMoveMode(); deactivateLineMode();
+    if(binMode) toggleBin();
+    // Temporarily reset transform so html2canvas captures at zoom=1
+    const oldT=canvas.style.transform;
+    canvas.style.transform="none";
+    // find bounding box of content
+    const allEls=[...document.querySelectorAll(".member"),...lines.map(l=>null)].filter(Boolean);
+    const ov=document.getElementById("saving-overlay");
+    ov.classList.add("show");
+    setTimeout(()=>{
+        ov.classList.remove("show");
+        // capture just the canvas element
+        html2canvas(canvas,{
+            backgroundColor:"#ffff00", scale:2, useCORS:true,
+            width:3000, height:3000,
+            onclone:(doc)=>{
+                // hide UI inside clone
+                doc.getElementById("ui") && (doc.getElementById("ui").style.display="none");
+                doc.getElementById("menu") && (doc.getElementById("menu").style.display="none");
+                doc.getElementById("saving-overlay") && (doc.getElementById("saving-overlay").style.display="none");
+            }
+        }).then(cv=>{
+            canvas.style.transform=oldT;
+            // crop to content
+            const ctx=cv.getContext("2d");
+            // find non-yellow bounding box
+            const imgData=ctx.getImageData(0,0,cv.width,cv.height);
+            let minX=cv.width,minY=cv.height,maxX=0,maxY=0;
+            for(let y=0;y<cv.height;y++){
+                for(let x=0;x<cv.width;x++){
+                    const i=(y*cv.width+x)*4;
+                    const r=imgData.data[i],g=imgData.data[i+1],b=imgData.data[i+2];
+                    if(!(r>240&&g>240&&b<50)){ // not yellow
+                        if(x<minX)minX=x; if(x>maxX)maxX=x;
+                        if(y<minY)minY=y; if(y>maxY)maxY=y;
+                    }
+                }
+            }
+            const pad=30;
+            minX=Math.max(0,minX-pad); minY=Math.max(0,minY-pad);
+            maxX=Math.min(cv.width,maxX+pad); maxY=Math.min(cv.height,maxY+pad);
+            const w=maxX-minX||cv.width, h=maxY-minY||cv.height;
+            const out=document.createElement("canvas"); out.width=w; out.height=h;
+            out.getContext("2d").drawImage(cv,minX,minY,w,h,0,0,w,h);
+            const a=document.createElement("a"); a.download="family_tree.jpeg";
+            a.href=out.toDataURL("image/jpeg",0.95); a.click();
+        }).catch(()=>{ canvas.style.transform=oldT; alert("Save failed."); });
+    },200);
+}
+
+/* ═══════════════════════════════════════════════════════
+   WIRE BUTTONS  (click + touchend)
+═══════════════════════════════════════════════════════ */
+function wire(el,fn){
+    el.addEventListener("click",   e=>{e.stopPropagation();fn();});
+    el.addEventListener("touchend",e=>{e.stopPropagation();e.preventDefault();fn();},{passive:false});
+}
+wire(plusBtn,  toggleMenu);
+wire(binBtn,   toggleBin);
+wire(minBtn,   ()=>changeSize(-5));
+wire(maxBtn,   ()=>changeSize(+5));
+wire(saveBtn,  saveImg);
+wire(lineItem, activateLineMode);
+wire(ciItem,   ()=>addShape("circle"));
+wire(sqItem,   ()=>addShape("square"));
+wire(dmItem,   ()=>addShape("diamond"));
+
+// close menu when clicking outside
+document.addEventListener("click", e=>{
+    if(!menu.contains(e.target)&&e.target!==plusBtn) closeMenu();
+});
+
+/* ═══════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════ */
+loadState();
+</script>
+</body>
+</html>
