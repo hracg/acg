@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Family Tree Builder</title>
+<style>
+*{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body{ width:100%; height:100%; overflow:hidden; background:#555; font-family:Arial,sans-serif; }
+
+/* The infinite yellow canvas rendered via HTML+SVG overlay */
+#world{
+    position:fixed; inset:0;
+    overflow:hidden;
+    touch-action:none;
+    cursor:default;
+}
+/* yellow bg fills entire viewport always */
+#world::before{
+    content:''; position:absolute; inset:0;
+    background:yellow; z-index:0;
+}
+/* SVG for lines — always full viewport, lines drawn in screen space */
+#svgLayer{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    pointer-events:none;
+    z-index:1;
+}
+/* shapes live here, transformed via CSS */
+#shapeLayer{
+    position:absolute; top:0; left:0;
+    width:0; height:0;        /* doesn't matter — children are absolute */
+    z-index:2;
+    transform-origin:0 0;
+}
+
+/* ── shape members ── */
+.member{
+    position:absolute;
+    display:flex; flex-direction:column; align-items:center;
+    cursor:pointer;
+    /* centred on their world coordinate */
+    transform:translate(-50%,-50%);
+}
+.shape{
+    border:2px solid black;
+    background:white;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center; font-weight:bold;
+    padding:2px; overflow:hidden;
+}
+.circle { border-radius:50%; }
+.square { border-radius:0; }
+.diamond{ transform:rotate(45deg); }
+.diamond span{ transform:rotate(-45deg); display:block; }
+/* selection ring — drawn outside the shape border */
+.member.selected .shape{
+    outline: 3px solid red;
+    outline-offset: 2px;
+}
+
+/* ── fixed bottom toolbar ── */
+#ui{
+    position:fixed; bottom:14px; left:50%;
+    transform:translateX(-50%);
+    display:flex; align-items:center; gap:9px;
+    z-index:9999; touch-action:none;
+}
+.btn{
+    width:54px; height:54px;
+    border:none; border-radius:50%;
+    background:blue; color:white;
+    font-size:24px; font-weight:bold;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 3px 10px rgba(0,0,0,.4);
+    transition:background .18s, transform .1s;
+    touch-action:manipulation;
+    flex-shrink:0;
+}
+.btn:active{ transform:scale(.92); }
+.btn.on{ background:crimson; box-shadow:0 0 0 4px orange; }
+#saveBtn{ width:106px; border-radius:27px; font-size:15px; background:green; gap:5px; }
+
+/* ── pop-up menu ── */
+#menu{
+    position:fixed; bottom:80px; right:14px;
+    display:flex; flex-direction:column; align-items:center; gap:7px;
+    z-index:9998;
+}
+.mitem{
+    width:46px; height:46px;
+    background:white; border:2px solid #222; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:19px; cursor:pointer;
+    opacity:0; transform:translateY(16px) scale(.8);
+    transition:opacity .2s, transform .2s;
+    pointer-events:none;
+    box-shadow:0 2px 8px rgba(0,0,0,.25);
+    touch-action:manipulation;
+}
+.mitem.txt{ font-size:11px; font-weight:700; letter-spacing:-.3px; }
+#menu.open .mitem{ opacity:1; transform:none; pointer-events:auto; }
+#menu.open .mitem:nth-child(1){ transition-delay:.00s; }
+#menu.open .mitem:nth-child(2){ transition-delay:.04s; }
+#menu.open .mitem:nth-child(3){ transition-delay:.08s; }
+#menu.open .mitem:nth-child(4){ transition-delay:.12s; }
+.mitem.on{ background:#111; color:#fff; }
+
+/* ── saving overlay ── */
+#ov{
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,.45); z-index:99999;
+    align-items:center; justify-content:center;
+    color:#fff; font-size:22px; font-weight:bold;
+}
+#ov.show{ display:flex; }
+body.linedraw{ cursor:crosshair; }
+</style>
+</head>
+<body>
+
+<div id="world">
+    <svg id="svgLayer"></svg>
+    <div id="shapeLayer"></div>
+</div>
+
+<div id="ui">
+    <button class="btn" id="binBtn">🗑</button>
+    <button class="btn" id="minBtn">−</button>
+    <button class="btn" id="maxBtn">M</button>
+    <button class="btn" id="saveBtn" style="width:106px;border-radius:27px;font-size:15px;">💾 Save</button>
+    <button class="btn" id="plusBtn">＋</button>
+</div>
+
+<div id="menu">
+    <div class="mitem txt" id="lineItem">╱ Line</div>
+    <div class="mitem" id="ciItem">●</div>
+    <div class="mitem" id="sqItem">■</div>
+    <div class="mitem" id="dmItem">◆</div>
+</div>
+
+<div id="ov">Saving…</div>
+
+<script>
+/* ═══════════════════════════════════════
+   WORLD / VIEW STATE
+   World coords are infinite floats.
+   Screen = world * zoom + pan
+═══════════════════════════════════════ */
+let panX=0, panY=0, zoom=1;
+
+const world      = document.getElementById("world");
+const svgLayer   = document.getElementById("svgLayer");
+const shapeLayer = document.getElementById("shapeLayer");
+
+function applyView(){
+    shapeLayer.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`;
+    // update all svg lines from stored world coords
+    lines.forEach(l=> updateSvgLine(l));
+}
+
+// world → screen
+function w2s(wx,wy){ return{ x:wx*zoom+panX, y:wy*zoom+panY }; }
+// screen → world
+function s2w(sx,sy){ return{ x:(sx-panX)/zoom, y:(sy-panY)/zoom }; }
+
+/* ═══════════════════════════════════════
+   UID
+═══════════════════════════════════════ */
+let _s=Date.now(); const uid=p=>p+(_s++).toString(36);
+
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
+let shapeSize  = 70;
+let members    = [];   // {id,type,name,wx,wy,size,el}
+let lines      = [];   // {id,wx1,wy1,wx2,wy2,svgEl}
+let selected   = null; // member being moved
+let binMode    = false;
+let lineMode   = false;
+let lineStart  = null; // world coord {x,y}
+let previewSvg = null;
+let menuOpen   = false;
+
+/* ═══════════════════════════════════════
+   PAN / ZOOM
+═══════════════════════════════════════ */
+// ── touch tracking ──
+let activeTouches={};
+let lastPinch=null, pinchPanOrigin=null;
+
+world.addEventListener("touchstart",e=>{
+    e.preventDefault();
+    Array.from(e.changedTouches).forEach(t=>activeTouches[t.identifier]={x:t.clientX,y:t.clientY});
+    const ids=Object.keys(activeTouches);
+    if(ids.length===2){
+        lastPinch=pinchDist(); pinchPanOrigin={x:panX,y:panY};
+    }
+},{passive:false});
+
+world.addEventListener("touchmove",e=>{
+    e.preventDefault();
+    Array.from(e.changedTouches).forEach(t=>activeTouches[t.identifier]={x:t.clientX,y:t.clientY});
+    const ids=Object.keys(activeTouches);
+    if(ids.length===2){
+        const d=pinchDist();
+        if(lastPinch&&d){
+            const mid=pinchMid();
+            const r=d/lastPinch;
+            const nz=Math.min(4,Math.max(0.15,zoom*r));
+            panX=mid.x-(mid.x-panX)*(nz/zoom);
+            panY=mid.y-(mid.y-panY)*(nz/zoom);
+            zoom=nz; lastPinch=d;
+            applyView();
+        }
+    } else if(ids.length===1){
+        // single finger pan — only when not in line/bin/move mode
+        if(!lineMode&&!binMode&&!selected&&!lineStart){
+            const t=e.changedTouches[0];
+            const prev=activeTouches[t.identifier]||{x:t.clientX,y:t.clientY};
+            // prev is already updated above, so use delta trick:
+        }
+    }
+},{passive:false});
+
+// single-finger pan via separate delta tracking
+let panFinger=null, panFOrigin=null, panWOrigin=null;
+world.addEventListener("touchstart",e=>{
+    if(Object.keys(activeTouches).length===1&&!lineMode&&!binMode&&!selected&&!lineStart){
+        const t=e.changedTouches[0];
+        panFinger=t.identifier; panFOrigin={x:t.clientX,y:t.clientY}; panWOrigin={x:panX,y:panY};
+    }
+},{passive:false});
+world.addEventListener("touchmove",e=>{
+    if(panFinger===null) return;
+    if(Object.keys(activeTouches).length!==1){ panFinger=null; return; }
+    const t=Array.from(e.changedTouches).find(tt=>tt.identifier===panFinger); if(!t) return;
+    panX=panWOrigin.x+(t.clientX-panFOrigin.x);
+    panY=panWOrigin.y+(t.clientY-panFOrigin.y);
+    applyView();
+},{passive:false});
+world.addEventListener("touchend",e=>{
+    Array.from(e.changedTouches).forEach(t=>delete activeTouches[t.identifier]);
+    if(!activeTouches[panFinger]) panFinger=null;
+    if(Object.keys(activeTouches).length<2) lastPinch=null;
+},{passive:false});
+
+function pinchDist(){
+    const ids=Object.keys(activeTouches); if(ids.length<2) return 0;
+    const a=activeTouches[ids[0]],b=activeTouches[ids[1]];
+    return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);
+}
+function pinchMid(){
+    const ids=Object.keys(activeTouches);
+    const a=activeTouches[ids[0]],b=activeTouches[ids[1]];
+    return{x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+}
+
+// mouse wheel zoom
+world.addEventListener("wheel",e=>{
+    e.preventDefault();
+    const r=e.deltaY<0?1.1:1/1.1;
+    const nz=Math.min(4,Math.max(0.15,zoom*r));
+    panX=e.clientX-(e.clientX-panX)*(nz/zoom);
+    panY=e.clientY-(e.clientY-panY)*(nz/zoom);
+    zoom=nz; applyView();
+},{passive:false});
+
+// middle-mouse pan
+let mmPan=false,mmStart={x:0,y:0},mmOrig={x:0,y:0};
+world.addEventListener("mousedown",e=>{
+    if(e.button===1){e.preventDefault();mmPan=true;mmStart={x:e.clientX,y:e.clientY};mmOrig={x:panX,y:panY};}
+});
+document.addEventListener("mousemove",e=>{
+    if(!mmPan) return;
+    panX=mmOrig.x+(e.clientX-mmStart.x); panY=mmOrig.y+(e.clientY-mmStart.y); applyView();
+});
+document.addEventListener("mouseup",e=>{ if(e.button===1)mmPan=false; });
+
+/* ═══════════════════════════════════════
+   PREVIEW LINE (mouse move)
+═══════════════════════════════════════ */
+world.addEventListener("mousemove",e=>{
+    if(!lineMode||!lineStart||!previewSvg) return;
+    const sp=w2s(lineStart.x,lineStart.y);
+    previewSvg.setAttribute("x1",sp.x); previewSvg.setAttribute("y1",sp.y);
+    previewSvg.setAttribute("x2",e.clientX); previewSvg.setAttribute("y2",e.clientY);
+});
+
+/* ═══════════════════════════════════════
+   CANVAS CLICK/TAP (world background)
+═══════════════════════════════════════ */
+function onWorldTap(sx,sy,fromTouch){
+    // ignore if toolbar/menu
+    const wpos=s2w(sx,sy);
+
+    if(binMode){
+        tryDeleteLine(wpos.x,wpos.y); return;
+    }
+    if(lineMode){
+        if(!lineStart){
+            lineStart={x:wpos.x,y:wpos.y};
+            previewSvg=makeSvgEl(sx,sy,sx,sy,"#444",true);
+        } else {
+            const id=uid("l");
+            const svgEl=makeSvgEl(
+                w2s(lineStart.x,lineStart.y).x, w2s(lineStart.x,lineStart.y).y,
+                sx,sy,"#000",false,id
+            );
+            lines.push({id,wx1:lineStart.x,wy1:lineStart.y,wx2:wpos.x,wy2:wpos.y,svgEl});
+            if(previewSvg){previewSvg.remove();previewSvg=null;}
+            lineStart=null;
+            deactivateLine();
+            persist();
+        }
+        return;
+    }
+    if(selected){
+        selected.wx=wpos.x; selected.wy=wpos.y;
+        selected.el.style.left=wpos.x+"px"; selected.el.style.top=wpos.y+"px";
+        selected.el.classList.remove("selected"); selected=null;
+        persist(); return;
+    }
+}
+
+world.addEventListener("click",e=>{
+    if(e.target.closest(".member")||e.target.closest("#ui")||e.target.closest("#menu")) return;
+    onWorldTap(e.clientX,e.clientY,false);
+});
+world.addEventListener("touchend",e=>{
+    if(e.target.closest("#ui")||e.target.closest("#menu")) return;
+    if(e.changedTouches.length!==1) return;
+    const t=e.changedTouches[0];
+    if(e.target.closest(".member")) return;
+    // only fire if it was a tap (not a pan)
+    onWorldTap(t.clientX,t.clientY,true);
+},{passive:false});
+
+/* ═══════════════════════════════════════
+   SVG LINES
+═══════════════════════════════════════ */
+function makeSvgEl(x1,y1,x2,y2,color,dashed,id){
+    const l=document.createElementNS("http://www.w3.org/2000/svg","line");
+    l.setAttribute("x1",x1);l.setAttribute("y1",y1);
+    l.setAttribute("x2",x2);l.setAttribute("y2",y2);
+    l.setAttribute("stroke",color);l.setAttribute("stroke-width","2.5");
+    l.setAttribute("stroke-linecap","round");
+    if(dashed)l.setAttribute("stroke-dasharray","8,5");
+    if(id)l.dataset.lid=id;
+    svgLayer.appendChild(l); return l;
+}
+function updateSvgLine(l){
+    const a=w2s(l.wx1,l.wy1),b=w2s(l.wx2,l.wy2);
+    l.svgEl.setAttribute("x1",a.x);l.svgEl.setAttribute("y1",a.y);
+    l.svgEl.setAttribute("x2",b.x);l.svgEl.setAttribute("y2",b.y);
+}
+
+/* ═══════════════════════════════════════
+   DELETE LINE
+═══════════════════════════════════════ */
+function tryDeleteLine(wx,wy){
+    const THRESH=18/zoom;
+    for(let i=lines.length-1;i>=0;i--){
+        const l=lines[i];
+        const dx=l.wx2-l.wx1,dy=l.wy2-l.wy1,len2=dx*dx+dy*dy;
+        let dist;
+        if(len2===0){ dist=Math.sqrt((wx-l.wx1)**2+(wy-l.wy1)**2); }
+        else{
+            const tt=Math.max(0,Math.min(1,((wx-l.wx1)*dx+(wy-l.wy1)*dy)/len2));
+            dist=Math.sqrt((wx-l.wx1-tt*dx)**2+(wy-l.wy1-tt*dy)**2);
+        }
+        if(dist<=THRESH){ l.svgEl.remove(); lines.splice(i,1); persist(); return; }
+    }
+}
+
+/* ═══════════════════════════════════════
+   SHAPES
+═══════════════════════════════════════ */
+function addShape(type){
+    const name=prompt("Enter name:"); if(!name) return;
+    closeMenu();
+    const wc=s2w(window.innerWidth/2,window.innerHeight/2);
+    mkMember(type,name,wc.x,wc.y,shapeSize,uid("m"));
+    persist();
+}
+
+function mkMember(type,name,wx,wy,size,id){
+    size=size||shapeSize;
+    const el=document.createElement("div");
+    el.className="member"; el.dataset.mid=id;
+    el.style.left=wx+"px"; el.style.top=wy+"px";
+
+    const sh=document.createElement("div");
+    sh.className="shape "+type;
+    sh.style.width=size+"px"; sh.style.height=size+"px";
+    sh.style.fontSize=Math.max(4,size/6)+"px";
+    sh.innerHTML=type==="diamond"?"<span>"+escHtml(name)+"</span>":escHtml(name);
+
+    const onTap=e=>{
+        e.stopPropagation();
+        if(binMode){ el.remove(); members=members.filter(m=>m.id!==id); persist(); return; }
+        if(lineMode) return;
+        const mbr=members.find(m=>m.id===id);
+        if(!mbr) return;
+        if(selected===mbr){ selected.el.classList.remove("selected"); selected=null; return; }
+        if(selected){ selected.el.classList.remove("selected"); }
+        selected=mbr; el.classList.add("selected");
+    };
+    el.addEventListener("click",onTap);
+    el.addEventListener("touchend",e2=>{e2.preventDefault();onTap(e2);},{passive:false});
+
+    el.appendChild(sh);
+    shapeLayer.appendChild(el);
+
+    const mbr={id,type,name,wx,wy,size,el};
+    members.push(mbr);
+    return mbr;
+}
+function escHtml(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+/* ═══════════════════════════════════════
+   SIZE
+═══════════════════════════════════════ */
+function changeSize(d){
+    shapeSize=Math.max(8,shapeSize+d);
+    members.forEach(m=>{
+        m.size=shapeSize;
+        const sh=m.el.querySelector(".shape");
+        sh.style.width=shapeSize+"px"; sh.style.height=shapeSize+"px";
+        sh.style.fontSize=Math.max(4,shapeSize/6)+"px";
+    });
+    persist();
+}
+
+/* ═══════════════════════════════════════
+   LINE MODE
+═══════════════════════════════════════ */
+function activateLine(){
+    closeMenu(); lineMode=true;
+    document.body.classList.add("linedraw");
+    document.getElementById("lineItem").classList.add("on");
+    if(selected){selected.el.classList.remove("selected");selected=null;}
+}
+function deactivateLine(){
+    lineMode=false;
+    document.body.classList.remove("linedraw");
+    document.getElementById("lineItem").classList.remove("on");
+    lineStart=null;
+    if(previewSvg){previewSvg.remove();previewSvg=null;}
+}
+
+/* ═══════════════════════════════════════
+   BIN
+═══════════════════════════════════════ */
+function toggleBin(){
+    binMode=!binMode;
+    document.getElementById("binBtn").classList.toggle("on",binMode);
+    if(binMode){deactivateLine(); if(selected){selected.el.classList.remove("selected");selected=null;} closeMenu();}
+}
+
+/* ═══════════════════════════════════════
+   MENU
+═══════════════════════════════════════ */
+function toggleMenu(){ menuOpen=!menuOpen; document.getElementById("menu").classList.toggle("open",menuOpen); }
+function closeMenu(){ menuOpen=false; document.getElementById("menu").classList.remove("open"); }
+document.addEventListener("click",e=>{
+    if(!document.getElementById("menu").contains(e.target)&&e.target!==document.getElementById("plusBtn")) closeMenu();
+});
+
+/* ═══════════════════════════════════════
+   PERSIST
+═══════════════════════════════════════ */
+const SKEY="ft_v7";
+function persist(){
+    try{
+        localStorage.setItem(SKEY,JSON.stringify({
+            panX,panY,zoom,shapeSize,
+            members:members.map(m=>({id:m.id,type:m.type,name:m.name,wx:m.wx,wy:m.wy,size:m.size})),
+            lines:lines.map(l=>({id:l.id,wx1:l.wx1,wy1:l.wy1,wx2:l.wx2,wy2:l.wy2}))
+        }));
+    }catch(e){console.warn(e);}
+}
+
+function loadState(){
+    try{
+        const raw=localStorage.getItem(SKEY); if(!raw) return;
+        const d=JSON.parse(raw);
+        panX=d.panX||0; panY=d.panY||0; zoom=d.zoom||1; shapeSize=d.shapeSize||70;
+        applyView();
+        (d.members||[]).forEach(m=>mkMember(m.type,m.name,m.wx,m.wy,m.size,m.id));
+        (d.lines||[]).forEach(l=>{
+            const svgEl=makeSvgEl(0,0,0,0,"#000",false,l.id);
+            lines.push({id:l.id,wx1:l.wx1,wy1:l.wy1,wx2:l.wx2,wy2:l.wy2,svgEl});
+            updateSvgLine(lines[lines.length-1]);
+        });
+    }catch(e){console.warn(e);}
+}
+
+/* ═══════════════════════════════════════
+   SAVE — render all content at native
+   resolution onto an offscreen canvas,
+   crop to used area, add 2px border
+   around each shape bounding box
+═══════════════════════════════════════ */
+function saveImg(){
+    if(selected){selected.el.classList.remove("selected");selected=null;}
+    deactivateLine(); if(binMode)toggleBin();
+
+    const ov=document.getElementById("ov"); ov.classList.add("show");
+
+    // Compute bounding box of all content in world coords
+    let minWx=Infinity,minWy=Infinity,maxWx=-Infinity,maxWy=-Infinity;
+    const PAD_W=20; // world-unit padding around content
+
+    members.forEach(m=>{
+        const half=m.size/2;
+        minWx=Math.min(minWx,m.wx-half-PAD_W); minWy=Math.min(minWy,m.wy-half-PAD_W);
+        maxWx=Math.max(maxWx,m.wx+half+PAD_W); maxWy=Math.max(maxWy,m.wy+half+PAD_W);
+    });
+    lines.forEach(l=>{
+        minWx=Math.min(minWx,l.wx1-PAD_W,l.wx2-PAD_W);
+        minWy=Math.min(minWy,l.wy1-PAD_W,l.wy2-PAD_W);
+        maxWx=Math.max(maxWx,l.wx1+PAD_W,l.wx2+PAD_W);
+        maxWy=Math.max(maxWy,l.wy1+PAD_W,l.wy2+PAD_W);
+    });
+
+    if(members.length===0&&lines.length===0){
+        ov.classList.remove("show"); alert("Nothing to save yet!"); return;
+    }
+
+    const SCALE=2; // 2× for high quality
+    const wW=maxWx-minWx, wH=maxWy-minWy;
+    const cW=Math.ceil(wW*SCALE), cH=Math.ceil(wH*SCALE);
+
+    const offscreen=document.createElement("canvas");
+    offscreen.width=cW; offscreen.height=cH;
+    const ctx=offscreen.getContext("2d");
+
+    // Fill yellow background
+    ctx.fillStyle="#ffff00";
+    ctx.fillRect(0,0,cW,cH);
+
+    // Helper: world → offscreen pixel
+    const w2c=(wx,wy)=>({ x:(wx-minWx)*SCALE, y:(wy-minWy)*SCALE });
+
+    // Draw lines
+    ctx.strokeStyle="#000";
+    ctx.lineWidth=2.5*SCALE;
+    ctx.lineCap="round";
+    lines.forEach(l=>{
+        const a=w2c(l.wx1,l.wy1),b=w2c(l.wx2,l.wy2);
+        ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    });
+
+    // Draw shapes
+    members.forEach(m=>{
+        const half=m.size/2;
+        const cx=(m.wx-minWx)*SCALE, cy=(m.wy-minWy)*SCALE;
+        const s=m.size*SCALE;
+
+        ctx.save();
+
+        if(m.type==="circle"){
+            // 2px yellow border outside shape border
+            ctx.strokeStyle="#ffff00"; ctx.lineWidth=4*SCALE;
+            ctx.beginPath(); ctx.arc(cx,cy,s/2+2*SCALE,0,Math.PI*2); ctx.stroke();
+            // white fill
+            ctx.fillStyle="white"; ctx.strokeStyle="black"; ctx.lineWidth=2;
+            ctx.beginPath(); ctx.arc(cx,cy,s/2,0,Math.PI*2);
+            ctx.fill(); ctx.stroke();
+            // text
+            drawText(ctx,m.name,cx,cy,s);
+
+        } else if(m.type==="square"){
+            const rx=cx-s/2, ry=cy-s/2;
+            // 2px yellow border
+            ctx.strokeStyle="#ffff00"; ctx.lineWidth=4*SCALE;
+            ctx.strokeRect(rx-2*SCALE,ry-2*SCALE,s+4*SCALE,s+4*SCALE);
+            // white fill + black border
+            ctx.fillStyle="white"; ctx.fillRect(rx,ry,s,s);
+            ctx.strokeStyle="black"; ctx.lineWidth=2;
+            ctx.strokeRect(rx,ry,s,s);
+            drawText(ctx,m.name,cx,cy,s);
+
+        } else { // diamond
+            // draw rotated square
+            ctx.translate(cx,cy); ctx.rotate(Math.PI/4);
+            const hs=s/2;
+            // yellow border
+            ctx.strokeStyle="#ffff00"; ctx.lineWidth=4*SCALE;
+            ctx.strokeRect(-hs-2*SCALE,-hs-2*SCALE,s+4*SCALE,s+4*SCALE);
+            ctx.fillStyle="white"; ctx.fillRect(-hs,-hs,s,s);
+            ctx.strokeStyle="black"; ctx.lineWidth=2;
+            ctx.strokeRect(-hs,-hs,s,s);
+            ctx.rotate(-Math.PI/4);
+            drawText(ctx,m.name,0,0,s*0.7);
+        }
+
+        ctx.restore();
+    });
+
+    ov.classList.remove("show");
+
+    offscreen.toBlob(blob=>{
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.download="family_tree.jpeg"; a.href=url; a.click();
+        setTimeout(()=>URL.revokeObjectURL(url),5000);
+    },"image/jpeg",0.96);
+}
+
+function drawText(ctx,text,cx,cy,boxSize){
+    const fs=Math.max(8,Math.min(boxSize*0.28, boxSize/Math.max(1,text.length)*1.8));
+    ctx.fillStyle="#000";
+    ctx.font=`bold ${fs}px Arial, sans-serif`;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    // simple word wrap
+    const words=text.split(" "), maxW=boxSize*0.85;
+    const lineH=fs*1.25;
+    let lns=[""];
+    words.forEach(w=>{
+        const test=lns[lns.length-1]+(lns[lns.length-1]?" ":"")+w;
+        if(ctx.measureText(test).width<=maxW){ lns[lns.length-1]=test; }
+        else{ lns.push(w); }
+    });
+    const totalH=(lns.length-1)*lineH;
+    lns.forEach((ln,i)=>{ ctx.fillText(ln, cx, cy - totalH/2 + i*lineH, maxW); });
+}
+
+/* ═══════════════════════════════════════
+   BUTTON WIRING
+═══════════════════════════════════════ */
+function wire(id,fn){
+    const el=document.getElementById(id);
+    el.addEventListener("click",   e=>{e.stopPropagation();fn();});
+    el.addEventListener("touchend",e=>{e.stopPropagation();e.preventDefault();fn();},{passive:false});
+}
+wire("plusBtn",  toggleMenu);
+wire("binBtn",   toggleBin);
+wire("minBtn",   ()=>changeSize(-5));
+wire("maxBtn",   ()=>changeSize(+5));
+wire("saveBtn",  saveImg);
+wire("lineItem", activateLine);
+wire("ciItem",   ()=>addShape("circle"));
+wire("sqItem",   ()=>addShape("square"));
+wire("dmItem",   ()=>addShape("diamond"));
+
+/* ═══════════════════════════════════════
+   BOOT
+═══════════════════════════════════════ */
+loadState();
+applyView();
+</script>
+</body>
+</html>
